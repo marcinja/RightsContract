@@ -1,4 +1,4 @@
 development:
     AllContracts:
         onDeploy:
-            -MakeContract.initiateContract("test")
+            -AllContracts.MakeContract.initiateContract("test")

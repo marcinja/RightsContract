@@ -58,8 +58,8 @@ contract MakeContract { //needs better name (?)
 
 /* What other "higher-level" functionality would be useful?
 Changing contract name? (or should it be voted on?)
-
 */
+
 contract RightsContract {
     //There's probably a better term than "invalid"
     enum Stages {
@@ -150,8 +150,6 @@ contract RightsContract {
     function RightsContract() {
         Permission[msg.sender] = true;
         stage = Stages(0);
-
-        //create metavote contract?
     }
 
     function checkStage() constant returns (uint retVal){
@@ -241,6 +239,10 @@ contract RightsContract {
         }
     }
 
+    function setMetaHash(string _ipfsHash) hasPermission isValid returns (bool res) {
+        ipfsHash = _ipfsHash;
+    }
+
 
     //Stops advancement of contract. Indicates some real world communication will be needed. (Code isn't the law here)
     function claimInvalid() hasPermission returns (bool retVal) {
@@ -255,7 +257,7 @@ contract RightsContract {
         return ipfsHash;
     }
 
-    function showNumberpartyAddresses() public constant returns(uint retVal) {
+    function showNumberPartyAddresses() public constant returns(uint retVal) {
         return numberpartyAddresses;
     }
 
@@ -296,20 +298,21 @@ SubContracts belong to particular instances of RightsContracts. Currently includ
 */
 contract SubContract {
 
-    address public rightsContract;
+    address public rightsContractAddr;
 
     //Might have to move this to actual subcontract?
     //Still unsure of how correct the linter is
     modifier hasPermission {
-        if (rightsContract.checkPermission(msg.sender)){
+        RightsContract c = RightsContract(rightsContractAddr);
+        if (c.checkPermission(msg.sender)){
             _
         }
     }
 
     //To be done only once
     function setRightsContract(address addr) {
-        if (rightsContract != 0x0){
-            rightsContract = addr;
+        if (rightsContractAddr != 0x0){
+            rightsContractAddr = addr;
         }
 
     }
@@ -360,9 +363,10 @@ contract MetaVote is SubContract{
 
     //If all partyAddresses have voted unanimously returns true,
     function checkVotes() public constant returns (bool retVal){
+        RightsContract c = RightsContract(rightsContractAddr);
         address addr = votes[0];
-        for (uint i = 0; i < rightsContract.partyAddresses.length; i++){
-            if (addr != rightsContract.partyAddresses[i]){
+        for (uint i = 0; i < c.showNumberPartyAddresses(); i++){
+            if (addr != c.showAddrs(i)){
                 return false;
             }
         }
@@ -371,13 +375,12 @@ contract MetaVote is SubContract{
 
     //Sends new hash upto RighstContract. Should be stored server-side as well.
     function publishMetaData() returns (bool retVal) {
-        if (!checkVotes){
+        RightsContract c = RightsContract(rightsContractAddr);
+        if (!checkVotes()){
             return false;
         }
-        string newMeta = proposals[rightsContract.partyAddresses[0]];
-        //Am unsure of how this will behave: reread docs on public variables and        how exactly state works
-        rightsContract.ipfsHash = newMeta;
-        //I feel like an asserstion would be good here
+        string newMeta = proposals[c.showAddrs(0)];
+        c.setMetaHash(newMeta);
         return true;
     }
 }
@@ -405,11 +408,12 @@ contract PaymentContract is SubContract {
     }
 
     function sendPayment(string _from, string _purpose) {
+        RightsContract c = RightsContract(rightsContractAddr);
         //to have information with payments stored in some kind of DB. TODO: decide on a data structure
         //TODO: Make this safer. Integer division here is definitely flawed.
         uint total = msg.value;
-        for (uint i = 0; i < rightsContract.partyAddresses.length; i++){
-            address p = rightsContract.partyAddresses[i];
+        for (uint i = 0; i < c.showNumberPartyAddresses(); i++){
+            address p = c.showAddrs(i);
             uint owed = total * split[p];
             balance[p] += owed;
             total -= owed;
