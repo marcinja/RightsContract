@@ -9,7 +9,9 @@ contract MakeContract { //needs better name (?)
         creator = msg.sender;
     }
 
-    function initiateContract(bytes32 name) public returns (address addr) {
+    event RightsContractCreated(bytes32 indexed _name, address indexed _addr);
+
+    function initiateContract(bytes32 name) {
         //Names cannot be overwritten. Instead, they must be deleted first.
 
         //TODO: test this if-statement
@@ -18,7 +20,7 @@ contract MakeContract { //needs better name (?)
         }
         address c = new RightsContract();
         contracts[name] = c;
-        return c;
+        RightsContractCreated(name, c);
     }
 
     function showContractAddr(bytes32 _name) public constant returns(address retVal){
@@ -26,7 +28,7 @@ contract MakeContract { //needs better name (?)
     }
 
     function removeContract(bytes32 name) public returns (string retVal) {
-        address cAddr= contracts[name];
+        address cAddr = contracts[name];
         /*if (c == 0x0){
             return "No such contract";
         } */
@@ -178,17 +180,26 @@ contract RightsContract {
     }
 
     function removeParty(address _addr) hasPermission atDrafted returns (bool retVal) {
-        if (!Permission[_addr]){
+        //Not the most efficient method, will rethink later
+        if (!Permission[_addr] || partyAddresses.length == 0){
             return false; //party already deleted
         }
+        uint arrLength = partyAddresses.length;
         delete Permission[_addr];
         delete Participants [_addr];
-        address[] storage temp;
-        for (uint i = 0; i < partyAddresses.length; i++){
+
+        //causes cap of 100 for participants which shouldn't matter, but is stupid design. 'integer literal is needed for array length'
+        address[100] memory temp;
+
+        for (uint i = 0; i < arrLength; i++){
             if (Permission[partyAddresses[i]]){
-                temp.push(partyAddresses[i]);
+                temp[i] = partyAddresses[i];
             }
         }
+        for (uint j = 0; j < arrLength; j++){
+            partyAddresses.push(temp[j]);
+        }
+
         delete partyAddresses;
         partyAddresses = temp;
         return true;
