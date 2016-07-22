@@ -3,13 +3,13 @@ contract MakeContract { //needs better name (?)
 
     //Still considering different options for naming contracts.
     //OR JUST USE CONTRACT ADDRESS
-    mapping (string => address) public contracts;
+    mapping (bytes32 => address) public contracts;
 
     function MakeContract() {
         creator = msg.sender;
     }
 
-    function initiateContract(string name) public returns (address addr) {
+    function initiateContract(bytes32 name) public returns (address addr) {
         //Names cannot be overwritten. Instead, they must be deleted first.
 
         //TODO: test this if-statement
@@ -21,11 +21,11 @@ contract MakeContract { //needs better name (?)
         return c;
     }
 
-    function showContractAddr(string _name) public constant returns(address retVal){
+    function showContractAddr(bytes32 _name) public constant returns(address retVal){
         return contracts[_name];
     }
 
-    function removeContract(string name) public returns (string retVal) {
+    function removeContract(bytes32 name) public returns (string retVal) {
         address cAddr= contracts[name];
         /*if (c == 0x0){
             return "No such contract";
@@ -162,21 +162,19 @@ contract RightsContract {
 
     //Adds a Party to contract. (JS will loop through all individuals needed and call this function for each one)
     function makeParty(address _addr, string _name, string _role, uint8 _rightsSplit) hasPermission atDrafted returns (bool retVal) {
-        Party storage p;
-        p = Party(
+        if (!(splitTotal + _rightsSplit <= 100)) {
+            return false;
+        }
+        Participants[_addr] = Party(
             _name,
             _role,
             _rightsSplit,
             false
             );
-        if (splitTotal + _rightsSplit <= 100) {
-            Participants[_addr] = p;
-            Permission[_addr] = true;
-            partyAddresses.push(_addr);
-            splitTotal += _rightsSplit;
-            return true;
-        }
-        return false;
+        Permission[_addr] = true;
+        partyAddresses.push(_addr);
+        splitTotal += _rightsSplit;
+        return true;
     }
 
     function removeParty(address _addr) hasPermission atDrafted returns (bool retVal) {
@@ -185,12 +183,13 @@ contract RightsContract {
         }
         delete Permission[_addr];
         delete Participants [_addr];
-        address[] memory temp;
+        address[] storage temp;
         for (uint i = 0; i < partyAddresses.length; i++){
             if (Permission[partyAddresses[i]]){
                 temp.push(partyAddresses[i]);
             }
         }
+        delete partyAddresses;
         partyAddresses = temp;
         return true;
     }
