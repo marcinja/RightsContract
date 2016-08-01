@@ -27,11 +27,11 @@ contract MakeContract { //needs better name (?)
         return contracts[_name];
     }
 
-    function removeContract(bytes32 name) public returns (string retVal) {
+    function removeContract(bytes32 name){
         address cAddr = contracts[name];
-        /*if (c == 0x0){
-            return "No such contract";
-        } */
+        if (cAddr == 0x0){
+            throw;
+        }
         RightsContract c = RightsContract(cAddr);
         //Check if c is invalid
         if (c.checkStage() == 3){
@@ -42,12 +42,7 @@ contract MakeContract { //needs better name (?)
                 //not sure how this behaves exactly
                 //contracts[name] = "" 0x0 0 might be better
                 delete contracts[name];
-                return "Contract removed.";
-            } else {
-                return "Action not permitted.";
             }
-        } else {
-            return "Cannot remove valid contract.";
         }
     }
 
@@ -57,6 +52,7 @@ contract MakeContract { //needs better name (?)
         }
     }
 }
+
 
 /* What other "higher-level" functionality would be useful?
 Changing contract name? (or should it be voted on?)
@@ -154,7 +150,7 @@ contract RightsContract {
         stage = Stages(0);
     }
 
-    function checkStage() constant returns (uint retVal){
+    function checkStage() public constant returns (uint retVal){
         for (uint i = 0; i < 4; i++){
             if (Stages(i) == stage){
                 return i;
@@ -163,9 +159,13 @@ contract RightsContract {
     }
 
     //Adds a Party to contract. (JS will loop through all individuals needed and call this function for each one)
-    function makeParty(address _addr, string _name, string _role, uint8 _rightsSplit) hasPermission atDrafted returns (bool retVal) {
+
+    //bool = true if added, false if removed
+    event PartyAdd(address addr, bool added);
+
+    function makeParty(address _addr, string _name, string _role, uint8 _rightsSplit) hasPermission atDrafted {
         if (!(splitTotal + _rightsSplit <= 100)) {
-            return false;
+            throw;
         }
         Participants[_addr] = Party(
             _name,
@@ -176,13 +176,13 @@ contract RightsContract {
         Permission[_addr] = true;
         partyAddresses.push(_addr);
         splitTotal += _rightsSplit;
-        return true;
+        PartyAdd(_addr, true);
     }
 
-    function removeParty(address _addr) hasPermission atDrafted returns (bool retVal) {
+    function removeParty(address _addr) hasPermission atDrafted{
         //Not the most efficient method, will rethink later
         if (!Permission[_addr] || partyAddresses.length == 0){
-            return false; //party already deleted
+            throw; //party already deleted
         }
         uint arrLength = partyAddresses.length;
         delete Permission[_addr];
@@ -202,7 +202,7 @@ contract RightsContract {
 
         delete partyAddresses;
         partyAddresses = temp;
-        return true;
+        PartyAdd(_addr, false);
     }
 
     function checkSplit() public constant returns (bool retVal){
@@ -219,37 +219,41 @@ contract RightsContract {
     }
 
     //If all partyAddresses have accepted, move to Accepted, and allow for PaymentContract creation
-    function acceptTerms() hasPermission atDrafted returns(string retVal) {
+    function acceptTerms() hasPermission atDrafted {
         if (!checkSplit()){
-            return "Invalid Split";
+            throw;
         }
         numberAccepted++;
         uint s = numberpartyAddresses - numberAccepted;
         if (s == 0) {
             stage = Stages(1);
-            return "Contract fully accepted";
         }
-        return "Submitted acceptance vote";
     }
 
-    function createPaymentContract() hasPermission atAccepted returns (address retVal) { //locks OwnershipSplit, uses proportions for payouts
+    event PaymentContractCreated(address indexed addr);
+
+    function createPaymentContract() hasPermission atAccepted { //locks OwnershipSplit, uses proportions for payouts
         if (paymentContract != 0x0) {
             address c = new PaymentContract();
             paymentContract = c;
             PaymentContract(c).setRightsContract(this);
-            return c;
+            PaymentContractCreated(c);
         }
     }
+
+    event MetaVoteContractCreated(address indexed addr);
+
     function createMetaVoteContract() hasPermission atAccepted returns (address retVal) { //locks OwnershipSplit, uses proportions for payouts
         if (paymentContract != 0x0) {
             address c = new MetaVote();
             metaVoteContract = c;
             MetaVote(c).setRightsContract(this);
-            return c;
+            MetaVoteContractCreated(c);
         }
     }
 
-    function setMetaHash(string _ipfsHash) hasPermission isValid returns (bool res) {
+     //Rework permissions for this?
+    function setMetaHash(string _ipfsHash) hasPermission isValid {
         ipfsHash = _ipfsHash;
     }
 
@@ -259,8 +263,6 @@ contract RightsContract {
         stage = Stages(3);
         return true;
     }
-
-
 
     //Below are contant functions for displaying contract info:
     function showMetaHash() public constant returns(string retVal) {
@@ -330,7 +332,6 @@ contract SubContract {
     function SubContract() {
 
     }
-
 }
 
 /*
@@ -351,10 +352,12 @@ contract MetaVote is SubContract{
 
     }
 
+    event ProposalAdded(address indexed addr, string indexed prop);
+
     //user submits IPFS hash for their proposal
-    function createProposal(string _proposal) hasPermission returns (bool retVal){
+    function createProposal(string _proposal) hasPermission {
         proposals[msg.sender] = _proposal;
-        return true;
+        ProposalAdded(msg.sender, _proposal);
     }
 
     function getProposal(address addr) constant returns (string _proposal){
@@ -366,9 +369,11 @@ contract MetaVote is SubContract{
     */
 
     //User votes on someone's propoal (can be their own).
-    function vote(address addr) hasPermission returns (bool retVal) {
+    event VoteAdded(address indexed _addr, address indexed vote);
+
+    function vote(address addr) hasPermission {
         votes[msg.sender] = addr;
-        return true;
+        VoteAdded(msg.sender, addr);
     }
 
     //If all partyAddresses have voted unanimously returns true,
@@ -383,15 +388,16 @@ contract MetaVote is SubContract{
         return true;
     }
 
+    event MetaUpdate(string indexed _prop);
     //Sends new hash upto RighstContract. Should be stored server-side as well.
-    function publishMetaData() returns (bool retVal) {
+    function publishMetaData() {
         RightsContract c = RightsContract(rightsContractAddr);
         if (!checkVotes()){
-            return false;
+            throw;
         }
         string newMeta = proposals[c.showAddrs(0)];
         c.setMetaHash(newMeta);
-        return true;
+        MetaUpdate(newMeta);
     }
 }
 

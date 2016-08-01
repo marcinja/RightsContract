@@ -1,4 +1,7 @@
 development:
-    AllContracts:
-        onDeploy:
-            -MakeContract.initiateContract("test")
+    MakeContract:
+        stub:
+            - RightsContract
+            - MetaVote
+            - PaymentContract
+staging:
