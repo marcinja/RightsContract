@@ -18,19 +18,18 @@ function initRightsContract() {
     var addr;
 
     //this event listens for new creation
-    //TODO: add and test parameter to listen for specific name
     make.RightsContractCreated().watch(function(err, result) {
     if (err) {
         console.log(err);
         return;
     }
     console.log("contract creation event detected");
-    console.log(result.args._value);
-    addr = res;//result.args._value;
+    console.log("Addr:");
+    addr = result.args._addr;
     console.log(addr);
     setRightsContract(name, addr);
 });
-    make.initiateContract(name, {from: account}).then(
+    make.initiateContract(name, {from: account, gas: 3000000}).then(
 	       function() {
             //var m = MakeContract.at(MakeContract.deployed().address);
 			setStatus("RightsContract created");
