@@ -46354,31 +46354,30 @@ var currentMV;
 var curenntPC;
 /*geth --datadir ~/Repos/MusicContract/local_eth --rpc --rpcport "8545" --rpccorsdomain "*" --nodiscover --networkid 12459 console */
 
-var make = MakeContract.deployed()
+var make = MakeContract.deployed();
 
 function initRightsContract() {
-	var name = document.getElementById("newRightsContract").value;
+    var name = document.getElementById("newRightsContract").value;
     var addr;
-	make.initiateContract(name, {from: account}).then(
-		function() {
+
+    //this event listens for new creation
+    //TODO: add and test parameter to listen for specific name
+    make.RightsContractCreated().watch(function(err, result) {
+    if (err) {
+        console.log(err);
+        return;
+    }
+    console.log("contract creation event detected");
+    console.log(result.args._value);
+    addr = res;//result.args._value;
+    console.log(addr);
+    setRightsContract(name, addr);
+});
+    make.initiateContract(name, {from: account}).then(
+	       function() {
             //var m = MakeContract.at(MakeContract.deployed().address);
 			setStatus("RightsContract created");
-
-            //Unsure of how this event works. callbacks are strange
-            make.RightsContractCreated().watch(function(err, result) {
-            if (err) {
-                console.log(err);
-                return;
-            }
-            console.log("contract creation event detected")
-            console.log(result.args._value);
-            addr = res//result.args._value;
-            console.log(addr);
-    	    setRightsContract(name, addr);
-        });
-        console.log("post event");
-
-}).catch(function(e) {
+        }).catch(function(e) {
 		console.log(e);
 		setStatus("Error creating RightsContract ");
 		});
@@ -46389,14 +46388,14 @@ function setRightsContract(name, addr) {
     var RC_name = document.getElementById("RightsContractAddr");
     var RC_addr = document.getElementById("RightsContractName");
     RC_name.innerHTML = name.valueOf();
-    RC_addr.innerHTML = value.valueOf();
+    RC_addr.innerHTML = addr.valueOf();
     currentRC = RightsContract.at(currentRCaddr);
 };
 
 function selectRightsContract() {
 	var name = document.getElementById("selectRC").value;
-    make.showContractAddr.call(name, {from: account}).then(function() {
-        setRightscontract(name, value);
+    make.showContractAddr.call(name, {from: account}).then(function(value) {
+        setRightsContract(name, value);
     }).catch(function(e) {
         console.log(e);
         setStatus("Error selecting rights contract");
@@ -46492,7 +46491,6 @@ function acceptContract() {
             console.log(e);
             console.log("error in accepting contract")
         });
-    )
 };
 
 function createMetaProposal() {
@@ -46500,7 +46498,6 @@ function createMetaProposal() {
     currentMV.createProposal(newProposal, {from: account}).then(
         function() {
             console.log("proposal created");
-        }
     }).catch(function(e) {
         console.log(e);
         console.log("error in metaproposal creation");

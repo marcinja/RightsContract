@@ -7,18 +7,23 @@
   <script src="./app.js"></script>
 </head>
 <body>
-  <h1>MetaCoin</h1>
+  <h1>RightsContract Management System (RMS)</h1>
   <h2>Example Truffle Dapp</h2>
-  <h3>You have <span class="black"><span id="balance"></span> META</span></h3>
+  <h3>Status update: <span class="black"> <span id="status"></span></span> </span></h3>
 
   <br>
-  <h1>Send</h1>
-  <br><label for="amount">Amount:</label><input type="text" id="newRightsContract" placeholder="e.g., 95"></input>
-  <br><label for="receiver">To Address:</label><input type="text" id="receiver" placeholder="e.g., 0x93e66d9baea28c17d9fc393b53e3fbdd76899dae"></input>
-  <br><br><button id="send" onclick="sendCoin()">Send MetaCoin</button>
-  <h4 id="RightsContractAddr"></h4>
-  <h5 id="RightsContractName"></h5>
-  <br><br>
-  <span id="status"></span>
+  <h3 id="RightsContractAddr">Your Contract Address</h3>
+  <h3 id="RightsContractName">Your Contract Name</h3>
+  <br>
+  <h1>Create Contract</h1>
+  <br><label for="Name">Name:</label><input type="text" id="newRightsContract" placeholder="e.g., Flame Mixtape 2"></input>
+  <br><br><button id="setAddr" onclick="initRightsContract()">Create New Contract</button>
+  <br>
+  <h1>Get Contract</h1>
+  <br><label for="Name">Name:</label><input type="text" id="selectRC" placeholder="e.g. MyContract"></input>
+  <br><br><button id="getContract" onclick="selectRightsContract()">Retrieve Contract Info</button>
+
+  <br>
+
 </body>
 </html>
