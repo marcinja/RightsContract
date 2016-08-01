@@ -1,7 +1,0 @@
-development:
-    MakeContract:
-        stub:
-            - RightsContract
-            - MetaVote
-            - PaymentContract
-staging:
