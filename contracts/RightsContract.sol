@@ -34,7 +34,7 @@ contract RightsContract {
     address[] partyAddresses;
 
     //Once all partyAddresses accept, move in to Accepted stage
-    uint numberpartyAddresses;
+    uint numberpartyAddresses = 0;
     uint numberAccepted;
 
     //total must be <= 100 in Drafted stage, and exactly 100 to move forward
@@ -98,15 +98,17 @@ contract RightsContract {
         if (!(splitTotal + _rightsSplit <= 100)) {
             throw;
         }
-        Participants[_addr] = Party(
+        Party memory p = Party(
             _name,
             _role,
             _rightsSplit,
             false
             );
+        Participants[_addr] = p; 
         Permission[_addr] = true;
         partyAddresses.push(_addr);
         splitTotal += _rightsSplit;
+        numberpartyAddresses += 1;
         PartyAdd(_addr, true);
     }
 

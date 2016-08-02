@@ -61,8 +61,16 @@ function addParty() {
 	var role = document.getElementById("newPartyRole").value;;
 	var rightsSplit = document.getElementById("newPartySplit").value;;
 
+    currentRC.PartyAdd().watch(function (err, result) {
+        if (err){
+            console.log(err);
+            console.log("party add event fail");
+        }
+        console.log(result);
+    });
 
-	currentRC.makeParty(addr, name, role, rightsSplit, {from: account}).then(
+    console.log(addr, name, role, rightsSplit);
+	currentRC.makeParty(addr, name, role, rightsSplit, {from: account, gas:999000}).then(
 			function() {
                 //this is the contract event
                 currentRC.PartyAdd().watch(function(err, result) {
@@ -186,28 +194,7 @@ function updateContractState() {
     var c = document.getElementById("contractState");
     console.log(MakeContract.deployed().add);
     c.innerHTML = "MakeContract addr: " + MakeContract.deployed().address.valueOf() + "<br>";
-
-    //Sets payment contract address in UI:
-    currentRC.showPaymentsAddr().call({from: account}).then(function(value) {
-        currentPCaddr = value;
-        console.log(currentPCaddr);
-    }).catch(function(e) {
-        console.log(e);
-        console.log("error retrieving payment contract");
-    });
-
-
-    c.innerHTML += "PaymentContract address: "  + currentPCaddr + "<br>";
-
-    currentRC.showMetaAddr().call({from: account}).then(function(value) {
-        currentMVaddr = value;
-        console.log(currentMVaddr);
-    }).catch(function(e) {
-        console.log(e);
-        console.log("error retrieving metavote contract");
-    });
-
-    c.innerHTML += "MetaVote Contract address: "  + currentMVaddr + "<br>";
+    c.innerHTML += "RightsContract addr: " + currentRC.address + "<br>";
 
 }
 
