@@ -18,9 +18,9 @@ contract MakeContract { //needs better name (?)
         //Names cannot be overwritten. Instead, they must be deleted first.
 
         //TODO: test this if-statement
-        /*if (contracts[name] != 0x0){
+        if (contracts[name] != 0x0){
             throw;
-        }*/
+        }
         address c = new RightsContract();
         contracts[name] = c;
         RightsContractCreated(name, c);

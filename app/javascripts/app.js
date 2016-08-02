@@ -3,12 +3,9 @@ var account;
 var balance;
 
 var currentRCaddr;
-var currentMVaddr;
-var currentPCaddr;
-
 var currentRC;
-var currentMV;
-var curenntPC;
+var paymentAllowed;
+
 /*geth --datadir ~/Repos/MusicContract/local_eth --rpc --rpcport "8545" --rpccorsdomain "*" --nodiscover --networkid 12459 console */
 
 var make = MakeContract.deployed();
@@ -29,7 +26,7 @@ function initRightsContract() {
     console.log(addr);
     setRightsContract(name, addr);
 });
-    make.initiateContract(name, {from: account, gas: 3000000}).then(
+    make.initiateContract(name, {from: account, gas: 333000}).then(
 	       function() {
             //var m = MakeContract.at(MakeContract.deployed().address);
 			setStatus("RightsContract created");
@@ -59,10 +56,10 @@ function selectRightsContract() {
 };
 
 function addParty() {
-	var addr;
-	var name;
-	var role;
-	var rightsSplit;
+	var addr = document.getElementById("newPartyAddr").value;
+	var name = document.getElementById("newPartyName").value;;
+	var role = document.getElementById("newPartyRole").value;;
+	var rightsSplit = document.getElementById("newPartySplit").value;;
 
 
 	currentRC.makeParty(addr, name, role, rightsSplit, {from: account}).then(
@@ -83,6 +80,7 @@ function addParty() {
 };
 
 function removeParty() {
+    //Add prompt to make sure!
     var addr = document.getElementById("removePartyAddr").value;
     currentRC.removeParty(addr, {from: account}).then(
         function() {
@@ -100,42 +98,33 @@ function removeParty() {
         });
 };
 
-function createPC() {
+function allowPayment() {
     //TODO: ADD function to set PC in html, and in global scope
-    currentRC.createPaymentContract({from: account}).then(
+    currentRC.unlockPayments({from: account}).then(
         function() {
-            //this is the event listening for new payment contracts.
-            //TODO: add parameter to specify which rights contract to listen to for new PC's
-            currentRC.PaymentContractCreated().watch(function(err, result) {
-                if (err) {
-                    console.log(err);
-                    return;
-                }
-                console.log("new payment contract detected")
-                console.log(res);
-            })
+            paymentAllowed = true;
+            setStatus("Payments Now Allowed");
         }).catch(function(e) {
             console.log(e);
-            setStatus("Error creating paymentcontract");
+            setStatus("Error unlocking payments");
         });
 };
 
-function createMV() {
-    currentRC.createMetaVoteContract({from: account}).then(
+function setNewMeta() {
+    currentRC.setMetaHash({from: account}).then(
         function() {
-            //this is the event listening for new payment contracts.
             //TODO: add parameter to specify which rights contract to listen to for new PC's
-            currentRC.MetaVoteContractCreated().watch(function(err, result) {
+            currentRC.MetaUpdate().watch(function(err, result) {
                 if (err) {
                     console.log(err);
                     return;
                 }
-                console.log("new metavote contract detected")
+                console.log("new metadata selected")
                 console.log(res);
             })
         }).catch(function(e) {
             console.log(e);
-            setStatus("Error creating metavote contract");
+            setStatus("Error selecting metadata");
         });
 };
 
@@ -151,7 +140,7 @@ function acceptContract() {
 
 function createMetaProposal() {
     var newProposal = document.getElementById("newProposal").value;
-    currentMV.createProposal(newProposal, {from: account}).then(
+    currentRC.createProposal(newProposal, {from: account}).then(
         function() {
             console.log("proposal created");
     }).catch(function(e) {
@@ -161,8 +150,8 @@ function createMetaProposal() {
 };
 
 function voteForMetaProposal() {
-    var addr;
-    currentMV.vote(addr, {from: account}).then(
+    var addr = document.getElementById("voteAddr").value;
+    currentRC.vote(addr, {from: account}).then(
         function() {
             console.log("vote successful");
         }).catch(function(e) {
@@ -171,9 +160,55 @@ function voteForMetaProposal() {
         });
 };
 
+function checkUserBalance() {
+    var bal;
+    currentRC.checkBalance.call({from: account}).then(function(value) {
+        console.log("User Balance retrieved");
+        bal = value;
+        document.getElementById("balanceCheck").innerHTML = bal;
+    }).catch(function(e) {
+        console.log(e);
+        console.log("error in checking user balance");
+    });
+};
+
+function withdraw() {
+    currentRC.withdraw({from: account}).then(function(){
+        console.log("Funds withdrawn");
+    }).catch(function(e) {
+        console.log(e);
+        console.log("error withdrawing funds");
+    });
+};
+
+
 function updateContractState() {
-    console.log(MakeContract.deployed());
-    //TODO: SHOW ALLL UPDATES here
+    var c = document.getElementById("contractState");
+    console.log(MakeContract.deployed().add);
+    c.innerHTML = "MakeContract addr: " + MakeContract.deployed().address.valueOf() + "<br>";
+
+    //Sets payment contract address in UI:
+    currentRC.showPaymentsAddr().call({from: account}).then(function(value) {
+        currentPCaddr = value;
+        console.log(currentPCaddr);
+    }).catch(function(e) {
+        console.log(e);
+        console.log("error retrieving payment contract");
+    });
+
+
+    c.innerHTML += "PaymentContract address: "  + currentPCaddr + "<br>";
+
+    currentRC.showMetaAddr().call({from: account}).then(function(value) {
+        currentMVaddr = value;
+        console.log(currentMVaddr);
+    }).catch(function(e) {
+        console.log(e);
+        console.log("error retrieving metavote contract");
+    });
+
+    c.innerHTML += "MetaVote Contract address: "  + currentMVaddr + "<br>";
+
 }
 
 
@@ -181,35 +216,6 @@ function updateContractState() {
 function setStatus(message) {
   var status = document.getElementById("status");
   status.innerHTML = message;
-};
-
-function refreshBalance() {
-  var meta = MetaCoin.deployed();
-
-  meta.getBalance.call(account, {from: account}).then(function(value) {
-    var balance_element = document.getElementById("balance");
-    balance_element.innerHTML = value.valueOf();
-  }).catch(function(e) {
-    console.log(e);
-    setStatus("Error getting balance; see log.");
-  });
-};
-
-function sendCoin() {
-  var meta = MetaCoin.deployed();
-
-  var amount = parseInt(document.getElementById("amount").value);
-  var receiver = document.getElementById("receiver").value;
-
-  setStatus("Initiating transaction... (please wait)");
-
-  meta.sendCoin(receiver, amount, {from: account}).then(function() {
-    setStatus("Transaction complete!");
-    refreshBalance();
-  }).catch(function(e) {
-    console.log(e);
-    setStatus("Error sending coin; see log.");
-  });
 };
 
 window.onload = function() {
@@ -226,7 +232,5 @@ window.onload = function() {
 
     accounts = accs;
     account = accounts[0];
-
-    refreshBalance();
   });
   }

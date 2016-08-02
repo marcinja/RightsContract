@@ -1,5 +1,6 @@
+
 contract RightsContract {
-    //There's probably a better term than "invalid"
+
     enum Stages {
         Drafted,
         Accepted,
@@ -19,18 +20,9 @@ contract RightsContract {
             _
         }
     }
-    modifier atPublished {
-        if (stage == Stages(2)){
-            _
-        }
-    }
+
     modifier isValid {
         if (stage != Stages(3)){
-            _
-        }
-    }
-    modifier isInvalid {
-        if (stage == Stages(3)){
             _
         }
     }
@@ -46,7 +38,7 @@ contract RightsContract {
     uint numberAccepted;
 
     //total must be <= 100 in Drafted stage, and exactly 100 to move forward
-    uint8 splitTotal;
+    uint splitTotal;
 
     //PaymentContract for this particular instance of RightsContract
     address paymentContract;
@@ -54,24 +46,18 @@ contract RightsContract {
     //Where voting on canonical meta data occurs
     address metaVoteContract;
 
-//The meta data;
+    //The meta data;
     string ipfsHash;
 
     //Structure for person involved in contract
     struct Party {
         string name;
         string role;
-        uint8 rightsSplit; //splits should be moved into payment contract!
+        uint rightsSplit; //splits should be moved into payment contract!
         bool accepts;
     }
 
-/*
-    mapping (address => string) Roles;
-    mapping (address => ) OwnershipSplit; //values inside ALWAYS adds up to 100. only ints allowed.
-    //sum checked on creation, and upon any changes.
-    //addresses in mappping MUST be in one of the address arrays
-    mapping (address => bool) Accepts;
-*/
+    //every address in partAddresses maps to a Party
     mapping (address => Party) Participants;
 
 
@@ -88,6 +74,10 @@ contract RightsContract {
     function RightsContract() {
         Permission[msg.sender] = true;
         stage = Stages(0);
+
+        //For testing:
+        paymentContract = msg.sender;
+        metaVoteContract = msg.sender;
     }
 
     function checkStage() public constant returns (uint retVal){
@@ -103,7 +93,8 @@ contract RightsContract {
     //bool = true if added, false if removed
     event PartyAdd(address addr, bool added);
 
-    function makeParty(address _addr, string _name, string _role, uint8 _rightsSplit) hasPermission atDrafted {
+    //Fails if splitTotal goes over 100
+    function makeParty(address _addr, string _name, string _role, uint _rightsSplit) hasPermission atDrafted {
         if (!(splitTotal + _rightsSplit <= 100)) {
             throw;
         }
@@ -146,7 +137,7 @@ contract RightsContract {
     }
 
     function checkSplit() public constant returns (bool retVal){
-        uint8 sum;
+        uint sum;
         for (uint i = 0; i < partyAddresses.length; i++){
             sum += Participants[partyAddresses[i]].rightsSplit;
         }
@@ -170,38 +161,96 @@ contract RightsContract {
         }
     }
 
-    event PaymentContractCreated(address indexed addr);
 
-    function createPaymentContract() hasPermission atAccepted { //locks OwnershipSplit, uses proportions for payouts
-        if (paymentContract != 0x0) {
-            address c = new PaymentContract();
-            paymentContract = c;
-            PaymentContract(c).setRightsContract(this);
-            PaymentContractCreated(c);
+
+    //For metadata:
+    mapping (address => string) public proposals;
+
+    mapping (address => address) public votes;
+
+    event ProposalAdded(address indexed addr, string indexed prop);
+
+    function createProposal(string _proposal) hasPermission {
+        proposals[msg.sender] = _proposal;
+        ProposalAdded(msg.sender, _proposal);
+    }
+
+    function getProposal(address addr) constant returns (string _proposal){
+        return proposals[addr];
+    }
+
+    event VoteAdded(address indexed _addr, address indexed vote);
+
+    function vote(address addr) hasPermission {
+        votes[msg.sender] = addr;
+        VoteAdded(msg.sender, addr);
+    }
+
+    function checkVotes() public constant returns (bool retVal){
+        address addr = votes[0];
+        for (uint i = 0; i < numberpartyAddresses; i++){
+            if (addr != partyAddresses[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    event MetaUpdate(string indexed _prop);
+
+    function setMetaHash() hasPermission isValid {
+        if (!checkVotes()){
+            throw;
+        }
+        ipfsHash = proposals[votes[0]];
+        MetaUpdate(ipfsHash);
+    }
+
+
+    //Payments:
+
+    //amount owed to each individual party
+    mapping (address => uint) balance;
+
+    bool paymentsUnlocked;
+
+    function unlockPayments() hasPermission atAccepted isValid{
+        paymentsUnlocked = true;
+    }
+
+    function showPaymentsUnlocked() public constant returns(bool retVal){
+        return paymentsUnlocked;
+    }
+
+    event Payment (address indexed sender, string indexed from, string indexed  purpose);
+
+    function sendPayment(string _from, string _purpose) {
+        uint total = msg.value;
+        for (uint i = 0; i < numberpartyAddresses; i++){
+            address p = partyAddresses[i];
+            uint owed = total / Participants[p].rightsSplit;
+            balance[p] += owed;
+            total += owed;
+        }
+        Payment(msg.sender, _from, _purpose);
+    }
+
+    function checkBalance() constant returns (uint retVal) {
+        return balance[msg.sender];
+    }
+
+    function withdrawBalance() hasPermission {
+        uint currentBalance = balance[msg.sender];
+        balance[msg.sender] = 0;
+        if (!msg.sender.send(currentBalance)) {
+            throw;
         }
     }
-
-    event MetaVoteContractCreated(address indexed addr);
-
-    function createMetaVoteContract() hasPermission atAccepted returns (address retVal) { //locks OwnershipSplit, uses proportions for payouts
-        if (paymentContract != 0x0) {
-            address c = new MetaVote();
-            metaVoteContract = c;
-            MetaVote(c).setRightsContract(this);
-            MetaVoteContractCreated(c);
-        }
-    }
-
-     //Rework permissions for this?
-    function setMetaHash(string _ipfsHash) hasPermission isValid {
-        ipfsHash = _ipfsHash;
-    }
-
 
     //Stops advancement of contract. Indicates some real world communication will be needed. (Code isn't the law here)
-    function claimInvalid() hasPermission returns (bool retVal) {
+    function claimInvalid() hasPermission{
         stage = Stages(3);
-        return true;
+        paymentsUnlocked = false;
     }
 
     //Below are contant functions for displaying contract info:
@@ -217,10 +266,20 @@ contract RightsContract {
         return partyAddresses[i];
     }
 
-    function showParty(uint i) public constant returns(string _name, string _role, uint8 _split, bool _accepts) {
-        //I think this has to be more than one function (uint uint uint ) returns are possible, prob not with different types though.
-        //does this work:
-        //showName(); showRole(); showSplit(); showAccepts(); all
+    function showPartyName(uint i) public constant returns(string _name){
+        return Participants[partyAddresses[i]].name;
+    }
+
+    function showPartyRole(uint i) public constant returns(string _role){
+        return Participants[partyAddresses[i]].role;
+    }
+
+    function showPartySplit(uint i) public constant returns(uint _split){
+        return Participants[partyAddresses[i]].rightsSplit;
+    }
+
+    function showPartyAccept(uint i) public constant returns(bool _accepts){
+        return Participants[partyAddresses[i]].accepts;
     }
 
     //why we need syntactic sugar in Solidity:
@@ -243,150 +302,5 @@ contract RightsContract {
 
     function showMetaAddr() public constant returns(address retVal) {
         return metaVoteContract;
-    }
-}
-
-
-/*
-SubContracts belong to particular instances of RightsContracts. Currently includes PaymentContract and MetaVote contracts. SubContracts should have access to splits, permissions, etc. from the main RightsContract
-*/
-contract SubContract {
-
-    address public rightsContractAddr;
-
-    //Might have to move this to actual subcontract?
-    //Still unsure of how correct the linter is
-    modifier hasPermission {
-        RightsContract c = RightsContract(rightsContractAddr);
-        if (c.checkPermission(msg.sender)){
-            _
-        }
-    }
-
-    //To be done only once
-    function setRightsContract(address addr) {
-        if (rightsContractAddr != 0x0){
-            rightsContractAddr = addr;
-        }
-
-    }
-
-    function SubContract() {
-
-    }
-}
-
-contract PaymentContract is SubContract {
-    event Payment (address indexed sender, string indexed from, string indexed  purpose);
-
-    //amount owed to each individual party
-    mapping (address => uint) balance;
-
-    //proportion out of 10,000 that each user gets
-    mapping (address => uint) split;
-
-
-    //"actual total" balance of ether stored in contract
-
-    function PaymentContract() {
-        //set rights contract address probably
-    }
-
-
-    function () {
-        //OOG errors are likely esp. because of storage costs for retrieving and resetting balances. Use sendPayment to supply more gas.
-        throw;
-    }
-
-    function sendPayment(string _from, string _purpose) {
-        RightsContract c = RightsContract(rightsContractAddr);
-        //to have information with payments stored in some kind of DB. TODO: decide on a data structure
-        //TODO: Make this safer. Integer division here is definitely flawed.
-        uint total = msg.value;
-        for (uint i = 0; i < c.showNumberPartyAddresses(); i++){
-            address p = c.showAddrs(i);
-            uint owed = total * split[p];
-            balance[p] += owed;
-            total -= owed;
-        }
-        Payment(msg.sender, _from, _purpose);
-    }
-
-    function checkBalance() constant returns (uint retVal) {
-        return balance[msg.sender];
-    }
-
-    function withdrawBalance() hasPermission {
-        uint currentBalance = balance[msg.sender];
-        balance[msg.sender] = 0;
-        if (!msg.sender.send(currentBalance)) {
-            throw;
-        }
-    }
-}
-/*
-This contract belongs to a specific instance of any RightsContract. It handles the creation of new metadata, and let's participants agree on a proposal.
-*/
-contract MetaVote is SubContract{
-    //Permissions will be used from the RightsContract
-
-    /*Each individual with permission can have a proposal up in the form of the hash of an IPFS object, which will be the JSON file for metadata. Other filetypes can be supported since it's just an IPFS hash. (yml, JSON-LD, IPLD, etc. should be looked into)
-    */
-    mapping (address => string) public proposals;
-
-    //Each user only gets one vote,
-    mapping (address => address) public votes;
-
-
-    function MetaVote() {
-
-    }
-
-    event ProposalAdded(address indexed addr, string indexed prop);
-
-    //user submits IPFS hash for their proposal
-    function createProposal(string _proposal) hasPermission {
-        proposals[msg.sender] = _proposal;
-        ProposalAdded(msg.sender, _proposal);
-    }
-
-    function getProposal(address addr) constant returns (string _proposal){
-        return proposals[addr];
-    }
-
-    /* On voting:
-    It's assumed there is some level of trust between participants, or that they have some way of deciding rights outside of this contract (e.g. a lawyer). The contract simply codifies the consensus on truth (hopefully).
-    */
-
-    //User votes on someone's propoal (can be their own).
-    event VoteAdded(address indexed _addr, address indexed vote);
-
-    function vote(address addr) hasPermission {
-        votes[msg.sender] = addr;
-        VoteAdded(msg.sender, addr);
-    }
-
-    //If all partyAddresses have voted unanimously returns true,
-    function checkVotes() public constant returns (bool retVal){
-        RightsContract c = RightsContract(rightsContractAddr);
-        address addr = votes[0];
-        for (uint i = 0; i < c.showNumberPartyAddresses(); i++){
-            if (addr != c.showAddrs(i)){
-                return false;
-            }
-        }
-        return true;
-    }
-
-    event MetaUpdate(string indexed _prop);
-    //Sends new hash upto RighstContract. Should be stored server-side as well.
-    function publishMetaData() {
-        RightsContract c = RightsContract(rightsContractAddr);
-        if (!checkVotes()){
-            throw;
-        }
-        string newMeta = proposals[c.showAddrs(0)];
-        c.setMetaHash(newMeta);
-        MetaUpdate(newMeta);
     }
 }
