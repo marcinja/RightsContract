@@ -74,10 +74,6 @@ contract RightsContract {
     function RightsContract() {
         Permission[msg.sender] = true;
         stage = Stages(0);
-
-        //For testing:
-        paymentContract = msg.sender;
-        metaVoteContract = msg.sender;
     }
 
     function checkStage() public constant returns (uint retVal){
@@ -87,8 +83,6 @@ contract RightsContract {
             }
         }
     }
-
-    //Adds a Party to contract. (JS will loop through all individuals needed and call this function for each one)
 
     //bool = true if added, false if removed
     event PartyAdd(address addr, bool added);
@@ -104,7 +98,7 @@ contract RightsContract {
             _rightsSplit,
             false
             );
-        Participants[_addr] = p; 
+        Participants[_addr] = p;
         Permission[_addr] = true;
         partyAddresses.push(_addr);
         splitTotal += _rightsSplit;
@@ -173,6 +167,12 @@ contract RightsContract {
     event ProposalAdded(address indexed addr, string indexed prop);
 
     function createProposal(string _proposal) hasPermission {
+        //If anyone has voted for your proposal(other than yourself), throw.
+        for (uint i = 0; i < numberpartyAddresses; i++){
+            if (votes[partyAddresses[i]] == msg.sender && partyAddresses[i] != msg.sender){
+                throw;
+                }
+            }
         proposals[msg.sender] = _proposal;
         ProposalAdded(msg.sender, _proposal);
     }
@@ -198,13 +198,43 @@ contract RightsContract {
         return true;
     }
 
+    //O(n) but there's probably a better solution.
+    function majorityVote() public constant returns(uint retVal){
+        mapping (address => uint) count;
+        uint majorityProposal;
+        uint maxVote = 0;
+
+        for (uint i = 0; i < numberpartyAddresses; i++){
+            address ithVote = votes[partyAddresses[i]];
+            count[ithVote] += 1;
+        }
+
+        for (uint j = 0; j < numberpartyAddresses; j++){
+            if (count[partyAddresses[j]] > maxVote){
+                maxVote = count[partyAddresses[j]];
+                majorityProposal = j;
+            }
+        }
+
+        if (maxVote > (numberpartyAddresses / 2)){
+            return majorityProposal;
+        } else {
+            //You probably shouldn't have 101 people in a contract like this...
+            return 101;
+        }
+    }
+
     event MetaUpdate(string indexed _prop);
 
     function setMetaHash() hasPermission isValid {
         if (!checkVotes()){
             throw;
         }
-        ipfsHash = proposals[votes[0]];
+        uint majorityProposal = majorityVote();
+        if (majorityProposal == 101){
+            throw;
+        }
+        ipfsHash = proposals[partyAddresses[majorityProposal]];
         MetaUpdate(ipfsHash);
     }
 
@@ -298,11 +328,4 @@ contract RightsContract {
         }
     }
 
-    function showPaymentsAddr() public constant returns(address retVal) {
-        return paymentContract;
-    }
-
-    function showMetaAddr() public constant returns(address retVal) {
-        return metaVoteContract;
-    }
 }

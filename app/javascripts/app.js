@@ -181,7 +181,7 @@ function checkUserBalance() {
 };
 
 function withdraw() {
-    currentRC.withdraw({from: account}).then(function(){
+    currentRC.withdrawBalance({from: account}).then(function(){
         console.log("Funds withdrawn");
     }).catch(function(e) {
         console.log(e);
