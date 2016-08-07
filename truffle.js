@@ -15,3 +15,5 @@ module.exports = {
     port: 8545
   }
 };
+
+/*geth --datadir ~/Repos/MusicContract/local_eth --rpc --rpcport "8545" --rpccorsdomain "*" --nodiscover --networkid 12459 console */

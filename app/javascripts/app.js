@@ -6,16 +6,14 @@ var currentRCaddr;
 var currentRC;
 var paymentAllowed;
 
-/*geth --datadir ~/Repos/MusicContract/local_eth --rpc --rpcport "8545" --rpccorsdomain "*" --nodiscover --networkid 12459 console */
-
-var make = MakeContract.deployed();
+var factory = RightsContractFactory.deployed();
 
 function initRightsContract() {
     var name = document.getElementById("newRightsContract").value;
     var addr;
 
     //this event listens for new creation
-    make.RightsContractCreated().watch(function(err, result) {
+    factory.RightsContractCreated().watch(function(err, result) {
     if (err) {
         console.log(err);
         return;
@@ -25,11 +23,18 @@ function initRightsContract() {
     addr = result.args._addr;
     console.log(addr);
     setRightsContract(name, addr);
+    currentRC.setPermission(account, {from: account, gas: 999000}).then(
+        function() {
+            console.log("permission set");
+        }).catch(function(e) {
+            console.log(e);
+    });
 });
-    make.initiateContract(name, {from: account, gas: 333000}).then(
-	       function() {
-            //var m = MakeContract.at(MakeContract.deployed().address);
+    factory.initiateContract(name, account, {from: account, gas: 3111123}).then(
+	       function(value) {
+            //var m = RightsContractFactory.at(RightsContractFactory.deployed().address);
 			setStatus("RightsContract created");
+            console.log(value);
         }).catch(function(e) {
 		console.log(e);
 		setStatus("Error creating RightsContract ");
@@ -47,7 +52,7 @@ function setRightsContract(name, addr) {
 
 function selectRightsContract() {
 	var name = document.getElementById("selectRC").value;
-    make.showContractAddr.call(name, {from: account}).then(function(value) {
+    factory.showContractAddr.call(name, {from: account}).then(function(value) {
         setRightsContract(name, value);
     }).catch(function(e) {
         console.log(e);
@@ -106,7 +111,7 @@ function removeParty() {
         });
 };
 
-function allowPayment() {
+function allowPayments() {
     //TODO: ADD function to set PC in html, and in global scope
     currentRC.unlockPayments({from: account}).then(
         function() {
@@ -192,8 +197,8 @@ function withdraw() {
 
 function updateContractState() {
     var c = document.getElementById("contractState");
-    console.log(MakeContract.deployed().add);
-    c.innerHTML = "MakeContract addr: " + MakeContract.deployed().address.valueOf() + "<br>";
+    console.log(RightsContractFactory.deployed().add);
+    c.innerHTML = "RightsContractFactory addr: " + RightsContractFactory.deployed().address.valueOf() + "<br>";
     c.innerHTML += "RightsContract addr: " + currentRC.address + "<br>";
 
 }

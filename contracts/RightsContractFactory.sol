@@ -1,6 +1,6 @@
 import "./RightsContract.sol";
 
-contract MakeContract { //needs better name (?)
+contract RightsContractFactory { //needs better name (?)
     address public creator;
 
     //Still considering different options for naming contracts.
@@ -8,7 +8,7 @@ contract MakeContract { //needs better name (?)
     mapping (bytes32 => address) public contracts;
 
 
-    function MakeContract() {
+    function RightsContractFactory() {
         creator = msg.sender;
     }
 

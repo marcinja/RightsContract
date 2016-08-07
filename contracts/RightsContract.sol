@@ -9,14 +9,13 @@ contract RightsContract {
     }
     Stages public stage;
 
+    function RightsContract() {
+        stage = Stages(2);
+    }
+
     //Modifiers to ensure contract changes can be locked in
     modifier atDrafted {
         if (stage == Stages(0)){
-            _
-        }
-    }
-    modifier atAccepted {
-        if (stage == Stages(1)){
             _
         }
     }
@@ -28,7 +27,7 @@ contract RightsContract {
     }
 
     //People who are allowed to make changes to this contract
-    mapping (address => bool) Permission;
+    mapping (address => bool) public Permission;
 
     //Iterating through this allows us to check splitTotal
     address[] partyAddresses;
@@ -39,12 +38,6 @@ contract RightsContract {
 
     //total must be <= 100 in Drafted stage, and exactly 100 to move forward
     uint splitTotal;
-
-    //PaymentContract for this particular instance of RightsContract
-    address paymentContract;
-
-    //Where voting on canonical meta data occurs
-    address metaVoteContract;
 
     //The meta data;
     string ipfsHash;
@@ -60,6 +53,14 @@ contract RightsContract {
     //every address in partAddresses maps to a Party
     mapping (address => Party) Participants;
 
+    //amount owed to each individual party
+    mapping (address => uint) balance;
+
+    //For metadata:
+    mapping (address => string) public proposals;
+
+    mapping (address => address) public votes;
+
 
     modifier hasPermission {
         if (Permission[msg.sender]){
@@ -71,9 +72,8 @@ contract RightsContract {
         return Permission[addr];
     }
 
-    function RightsContract() {
-        Permission[msg.sender] = true;
-        stage = Stages(0);
+    function setPermission(address addr){
+            Permission[addr] = true;
     }
 
     function checkStage() public constant returns (uint retVal){
@@ -83,9 +83,6 @@ contract RightsContract {
             }
         }
     }
-
-    //bool = true if added, false if removed
-    event PartyAdd(address addr, bool added);
 
     //Fails if splitTotal goes over 100
     function makeParty(address _addr, string _name, string _role, uint _rightsSplit) hasPermission atDrafted {
@@ -103,7 +100,6 @@ contract RightsContract {
         partyAddresses.push(_addr);
         splitTotal += _rightsSplit;
         numberpartyAddresses += 1;
-        PartyAdd(_addr, true);
     }
 
     function removeParty(address _addr) hasPermission atDrafted{
@@ -129,7 +125,6 @@ contract RightsContract {
 
         delete partyAddresses;
         partyAddresses = temp;
-        PartyAdd(_addr, false);
     }
 
     function checkSplit() public constant returns (bool retVal){
@@ -157,15 +152,6 @@ contract RightsContract {
         }
     }
 
-
-
-    //For metadata:
-    mapping (address => string) public proposals;
-
-    mapping (address => address) public votes;
-
-    event ProposalAdded(address indexed addr, string indexed prop);
-
     function createProposal(string _proposal) hasPermission {
         //If anyone has voted for your proposal(other than yourself), throw.
         for (uint i = 0; i < numberpartyAddresses; i++){
@@ -174,18 +160,22 @@ contract RightsContract {
                 }
             }
         proposals[msg.sender] = _proposal;
-        ProposalAdded(msg.sender, _proposal);
     }
 
     function getProposal(address addr) constant returns (string _proposal){
         return proposals[addr];
     }
 
-    event VoteAdded(address indexed _addr, address indexed vote);
-
     function vote(address addr) hasPermission {
         votes[msg.sender] = addr;
-        VoteAdded(msg.sender, addr);
+    }
+
+    function setMetaHash() hasPermission isValid {
+        if (!checkVotes()){
+            throw;
+        }
+        ipfsHash = proposals[votes[0]];
+        stage = Stages(2);
     }
 
     function checkVotes() public constant returns (bool retVal){
@@ -198,56 +188,11 @@ contract RightsContract {
         return true;
     }
 
-    //O(n) but there's probably a better solution.
-    function majorityVote() public constant returns(uint retVal){
-        mapping (address => uint) count;
-        uint majorityProposal;
-        uint maxVote = 0;
-
-        for (uint i = 0; i < numberpartyAddresses; i++){
-            address ithVote = votes[partyAddresses[i]];
-            count[ithVote] += 1;
-        }
-
-        for (uint j = 0; j < numberpartyAddresses; j++){
-            if (count[partyAddresses[j]] > maxVote){
-                maxVote = count[partyAddresses[j]];
-                majorityProposal = j;
-            }
-        }
-
-        if (maxVote > (numberpartyAddresses / 2)){
-            return majorityProposal;
-        } else {
-            //You probably shouldn't have 101 people in a contract like this...
-            return 101;
-        }
-    }
-
-    event MetaUpdate(string indexed _prop);
-
-    function setMetaHash() hasPermission isValid {
-        if (!checkVotes()){
-            throw;
-        }
-        uint majorityProposal = majorityVote();
-        if (majorityProposal == 101){
-            throw;
-        }
-        ipfsHash = proposals[partyAddresses[majorityProposal]];
-        MetaUpdate(ipfsHash);
-    }
-
-
     //Payments:
-
-    //amount owed to each individual party
-    mapping (address => uint) balance;
-
     bool paymentsUnlocked;
 
-    function unlockPayments() hasPermission atAccepted isValid{
-        paymentsUnlocked = true;
+    function unlockPayments() hasPermission atDrafted isValid{
+        stage = Stages(1);
     }
 
     function showPaymentsUnlocked() public constant returns(bool retVal){
@@ -313,19 +258,4 @@ contract RightsContract {
     function showPartyAccept(uint i) public constant returns(bool _accepts){
         return Participants[partyAddresses[i]].accepts;
     }
-
-    //why we need syntactic sugar in Solidity:
-    function showStage() public constant returns(string _stage) {
-        uint s = checkStage();
-        if (s == 0){
-            return "Drafted";
-        } else if (s == 1){
-            return "Accepted";
-        } else if (s == 2){
-            return "Published";
-        } else if (s == 3){
-            return "Invalid";
-        }
-    }
-
 }

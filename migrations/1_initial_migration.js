@@ -1,5 +1,6 @@
 module.exports = function(deployer) {
-  deployer.deploy(MakeContract);
+  deployer.deploy(RightsContractFactory);
+  deployer.deploy(RightsContract);
 };
 /*
 
