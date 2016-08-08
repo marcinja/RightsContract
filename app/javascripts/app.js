@@ -66,16 +66,8 @@ function addParty() {
 	var role = document.getElementById("newPartyRole").value;;
 	var rightsSplit = document.getElementById("newPartySplit").value;;
 
-    currentRC.PartyAdd().watch(function (err, result) {
-        if (err){
-            console.log(err);
-            console.log("party add event fail");
-        }
-        console.log(result);
-    });
-
     console.log(addr, name, role, rightsSplit);
-	currentRC.makeParty(addr, name, role, rightsSplit, {from: account, gas:999000}).then(
+	currentRC.makeParty(addr, name, role, rightsSplit, {from: account, gas:3111123}).then(
 			function() {
                 //this is the contract event
                 currentRC.PartyAdd().watch(function(err, result) {
@@ -200,6 +192,16 @@ function updateContractState() {
     console.log(RightsContractFactory.deployed().add);
     c.innerHTML = "RightsContractFactory addr: " + RightsContractFactory.deployed().address.valueOf() + "<br>";
     c.innerHTML += "RightsContract addr: " + currentRC.address + "<br>";
+
+    var num;
+    currentRC.showNumberPartyAddresses.call({from: account}).then(function(value) {num = value;});
+    c.innerHTML += "Number of parties: " + num.valueOf() + "<br>";
+
+    var metadataHash;
+    currentRC.showMetaHash.call({from: account}).then(function(value) {metadataHash = value;});
+    c.innerHTML += "IPFS Hash: " + metadataHash.valueOf() + "<br>";
+    c.innerHTML += "Direct link to IPFS gateway: https://gateway.ipfs.io/ipfs/" + metadataHash.valueOf() +"<br>";
+
 
 }
 

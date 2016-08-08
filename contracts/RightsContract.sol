@@ -10,7 +10,8 @@ contract RightsContract {
     Stages public stage;
 
     function RightsContract() {
-        stage = Stages(2);
+        stage = Stages(0);
+        numberpartyAddresses = 0;
     }
 
     //Modifiers to ensure contract changes can be locked in
@@ -33,7 +34,7 @@ contract RightsContract {
     address[] partyAddresses;
 
     //Once all partyAddresses accept, move in to Accepted stage
-    uint numberpartyAddresses = 0;
+    uint numberpartyAddresses;
     uint numberAccepted;
 
     //total must be <= 100 in Drafted stage, and exactly 100 to move forward
@@ -73,7 +74,7 @@ contract RightsContract {
     }
 
     function setPermission(address addr){
-            Permission[addr] = true;
+        Permission[addr] = true;
     }
 
     function checkStage() public constant returns (uint retVal){
@@ -174,12 +175,12 @@ contract RightsContract {
         if (!checkVotes()){
             throw;
         }
-        ipfsHash = proposals[votes[0]];
+        ipfsHash = proposals[votes[partyAddresses[0]]];
         stage = Stages(2);
     }
 
     function checkVotes() public constant returns (bool retVal){
-        address addr = votes[0];
+        address addr = votes[partyAddresses[0]];
         for (uint i = 0; i < numberpartyAddresses; i++){
             if (addr != partyAddresses[i]) {
                 return false;
