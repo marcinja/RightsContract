@@ -11,7 +11,7 @@ contract RightsContract {
 
     function RightsContract() {
         stage = Stages.Drafted;
-        numberpartyAddresses = 0;
+        numberPartyAddresses = 0;
         splitTotal = 0;
     }
 
@@ -47,7 +47,7 @@ contract RightsContract {
     address[] partyAddresses;
 
     //Once all partyAddresses accept, move in to Accepted stage
-    uint numberpartyAddresses;
+    uint numberPartyAddresses;
     uint numberAccepted;
 
     //total must be <= 100 in Drafted stage, and exactly 100 to move forward
@@ -87,12 +87,12 @@ contract RightsContract {
     }
 
     function setPermission(address addr){
+        if (numberPartyAddresses != 0){
+            throw;
+        }
         Permission[addr] = true;
     }
 
-    function setStageDrafted() hasPermission {
-        stage = Stages.Accepted;
-    }
 
     function checkStage() public constant returns (uint retVal){
         return uint(stage);
@@ -113,15 +113,15 @@ contract RightsContract {
         Permission[_addr] = true;
         partyAddresses.push(_addr);
         splitTotal += _rightsSplit;
-        numberpartyAddresses += 1;
+        numberPartyAddresses += 1;
     }
 
     function removeParty(address _addr) hasPermission atDrafted{
         //Not the most efficient method, will rethink later
-        if (!Permission[_addr] || partyAddresses.length == 0){
+        if (!Permission[_addr] || numberPartyAddresses == 0){
             throw; //party already deleted
         }
-        uint arrLength = partyAddresses.length;
+        uint arrLength = numberPartyAddresses -1;
         delete Permission[_addr];
         delete Participants [_addr];
 
@@ -129,7 +129,7 @@ contract RightsContract {
         address[100] memory temp;
         uint addrIndex;
 
-        for (uint i = 0; i < arrLength; i++){
+        for (uint i = 0; i < numberPartyAddresses; i++){
             if (partyAddresses[i] != _addr){
                 temp[i] = partyAddresses[i];
             } else {
@@ -138,21 +138,22 @@ contract RightsContract {
             }
         }
 
-        for (uint j = addrIndex; j < arrLength - 1; j++){
+        for (uint j = addrIndex; j < arrLength; j++){
             temp[j] = partyAddresses[j+1];
         }
 
-        for (uint k = 0; k < arrLength - 1; k++){
-            partyAddresses[k] = temp[k];
+        delete partyAddresses;
+
+        for (uint k = 0; k < arrLength; k++){
+            partyAddresses.push(temp[k]);
         }
 
-        delete partyAddresses;
-        partyAddresses = temp;
+        numberPartyAddresses -= 1;
     }
 
     function checkSplit() public constant returns (bool retVal){
         uint sum;
-        for (uint i = 0; i < partyAddresses.length; i++){
+        for (uint i = 0; i < numberPartyAddresses; i++){
             sum += Participants[partyAddresses[i]].rightsSplit;
         }
         if (sum == 100){
@@ -160,7 +161,6 @@ contract RightsContract {
         } else {
             return false;
         }
-
     }
 
     //If all partyAddresses have accepted, move to Accepted, and allow for PaymentContract creation
@@ -169,7 +169,7 @@ contract RightsContract {
             throw;
         }
         numberAccepted++;
-        uint s = numberpartyAddresses - numberAccepted;
+        uint s = numberPartyAddresses - numberAccepted;
         if (s == 0) {
             stage = Stages.Accepted;
         }
@@ -177,7 +177,7 @@ contract RightsContract {
 
     function createProposal(string _proposal) hasPermission {
         //If anyone has voted for your proposal(other than yourself), throw.
-        for (uint i = 0; i < numberpartyAddresses; i++){
+        for (uint i = 0; i < numberPartyAddresses; i++){
             if (votes[partyAddresses[i]] == msg.sender && partyAddresses[i] != msg.sender){
                 throw;
                 }
@@ -208,7 +208,7 @@ contract RightsContract {
         stage = Stages.Published;
 
         //After metadata is set, votes are cleared (but proposals stay)
-        for (uint i = 0; i < numberpartyAddresses; i++){
+        for (uint i = 0; i < numberPartyAddresses; i++){
             delete votes[partyAddresses[i]];
         }
     }
@@ -218,19 +218,19 @@ contract RightsContract {
         uint majorityProposal;
         uint maxVote = 0;
 
-        for (uint i = 0; i < numberpartyAddresses; i++){
+        for (uint i = 0; i < numberPartyAddresses; i++){
             address ithVote = votes[partyAddresses[i]];
             count[ithVote] += 1;
         }
 
-        for (uint j = 0; j < numberpartyAddresses; j++){
+        for (uint j = 0; j < numberPartyAddresses; j++){
            if (count[partyAddresses[j]] > maxVote){
                 maxVote = count[partyAddresses[j]];
                 majorityProposal = j;
             }
         }
 
-        if (maxVote > (numberpartyAddresses / 2)){
+        if (maxVote > (numberPartyAddresses / 2)){
             return majorityProposal;
         } else {
             //Since 100 is the max number of parties allowed
@@ -254,7 +254,7 @@ contract RightsContract {
 
     function sendPayment(string _from, string _purpose) {
         uint total = msg.value;
-        for (uint i = 0; i < numberpartyAddresses; i++){
+        for (uint i = 0; i < numberPartyAddresses; i++){
             address p = partyAddresses[i];
             uint owed = total / Participants[p].rightsSplit;
             balance[p] += owed;
@@ -288,7 +288,7 @@ contract RightsContract {
             throw;
         }
         numberAccepted++;
-        uint s = numberpartyAddresses - numberAccepted;
+        uint s = numberPartyAddresses - numberAccepted;
         if (s == 0) {
             stage = Stages.Drafted;
             numberAccepted = 0;
@@ -300,8 +300,8 @@ contract RightsContract {
         return ipfsHash;
     }
 
-    function showNumberPartyAddresses() public constant returns(uint retVal) {
-        return numberpartyAddresses;
+    function shownumberPartyAddresses() public constant returns(uint retVal) {
+        return numberPartyAddresses;
     }
 
     function showAddrs(uint i) public constant returns(address retVal) {

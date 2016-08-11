@@ -16,16 +16,16 @@
   <h3 id="RightsContractName">Your Contract Name</h3>
   <br>
   <h1>Create Contract</h1>
-  <br><label for="Name">Name:</label><input type="text" id="newRightsContract" placeholder="e.g., Flame Mixtape 2"></input>
+  <br><label for="Name">Name:</label><input type="text" id="newRightsContract" placeholder="e.g., best vaporwave 2016"></input>
   <br><br><button id="setAddr" onclick="initRightsContract()">Create New Contract</button>
-  <br>
+  <br><br>
   <h1>Get Contract</h1>
   <br><label for="Name">Name:</label><input type="text" id="selectRC" placeholder="e.g. MyContract"></input>
   <br><br><button id="getContract" onclick="selectRightsContract()">Retrieve Contract Address</button>
-  <br>
+  <br><br>
   <h1>Contract State</h1>
   <br><br><button id="getState" onclick="updateContractState()">Update State</button>
-  <br>
+  <br><br>
   <p id="contractState"> </p>
   <br><br>
   <button onclick="acceptContract()">Accept Contract Terms</button>
@@ -39,7 +39,7 @@
   <br><label for="Split">Split:</label><input type="text" id="newPartySplit" placeholder="e.g. 45 (out of 100)"></input>
   <br><br>
   <button onclick="addParty()">Add Participant</button>
-
+  <br>
   <br>
   <br><label for="remove">Remove participant:</label><input type="text" id="removePartyAddr" placeholder="e.g. 0x123456789"></input>
   <br><br><button onclick="removeParty()">Remove</button>
@@ -57,7 +57,7 @@
   <br><br><button onclick="setNewMeta()">Set New Metadata</button>
   <br><br>
   <h1>Payment Information</h1>
-  <br>To send a payment: call the sendPayment(name, purpose) function with parameters to give more information about your payment</p>
+  <br><p>To send a payment: call the sendPayment(name, purpose) function with parameters to give more information about your payment</p>
   <br><button onclick="allowPayments()">Enable Payments</button>
   <br><br>
   <label>Your Balance:</label><h2 id="balanceCheck"><h2>
@@ -65,7 +65,10 @@
   <br><br>
   <button onclick="withdraw()">Withdraw Balance</button>
 
-  <br><br>
+  <br><br><br>
+
+  <h1>Dispute Contract or Validate it</h1>
+  <br><p>If you have an issue with your contract, you can prevent further action, and further payments by making it invalid.</p>
 
 </body>
 </html>
