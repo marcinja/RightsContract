@@ -1,13 +1,3 @@
 module.exports = function(deployer) {
-  deployer.deploy(RightsContractFactory);
-  deployer.deploy(RightsContract);
+  deployer.deploy(Migrations);
 };
-/*
-
-module.exports = function(deployer) {
-  deployer.deploy(MakeContract);
- // deployer.autolink();
-  //.deploy(MetaCoin);
-};
-
-*/

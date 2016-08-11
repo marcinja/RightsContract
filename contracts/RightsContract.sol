@@ -10,19 +10,20 @@ contract RightsContract {
     Stages public stage;
 
     function RightsContract() {
-        stage = Stages(0);
+        stage = Stages.Drafted;
         numberpartyAddresses = 0;
+        splitTotal = 0;
     }
 
     //Modifiers to ensure contract changes can be locked in
     modifier atDrafted {
-        if (stage == Stages(0)){
+        if (stage == Stages.Drafted){
             _
         }
     }
 
     modifier isValid {
-        if (stage != Stages(3)){
+        if (stage != Stages.Invalid){
             _
         }
     }
@@ -77,12 +78,12 @@ contract RightsContract {
         Permission[addr] = true;
     }
 
+    function setStageDrafted() hasPermission {
+        stage = Stages.Accepted;
+    }
+
     function checkStage() public constant returns (uint retVal){
-        for (uint i = 0; i < 4; i++){
-            if (Stages(i) == stage){
-                return i;
-            }
-        }
+        return uint(stage);
     }
 
     //Fails if splitTotal goes over 100
@@ -149,7 +150,7 @@ contract RightsContract {
         numberAccepted++;
         uint s = numberpartyAddresses - numberAccepted;
         if (s == 0) {
-            stage = Stages(1);
+            stage = Stages.Accepted;
         }
     }
 
@@ -176,7 +177,7 @@ contract RightsContract {
             throw;
         }
         ipfsHash = proposals[votes[partyAddresses[0]]];
-        stage = Stages(2);
+        //stage = Stages(2);
     }
 
     function checkVotes() public constant returns (bool retVal){
@@ -192,8 +193,10 @@ contract RightsContract {
     //Payments:
     bool paymentsUnlocked;
 
+    //Should be available atPublished(?) only
     function unlockPayments() hasPermission atDrafted isValid{
-        stage = Stages(1);
+        stage = Stages.Accepted;
+        paymentsUnlocked = true;
     }
 
     function showPaymentsUnlocked() public constant returns(bool retVal){
@@ -227,7 +230,7 @@ contract RightsContract {
 
     //Stops advancement of contract. Indicates some real world communication will be needed. (Code isn't the law here)
     function claimInvalid() hasPermission{
-        stage = Stages(3);
+        stage = Stages.Invalid;
         paymentsUnlocked = false;
     }
 

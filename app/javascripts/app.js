@@ -68,16 +68,10 @@ function addParty() {
 
     console.log(addr, name, role, rightsSplit);
 	currentRC.makeParty(addr, name, role, rightsSplit, {from: account, gas:3111123}).then(
-			function() {
+			function(value) {
                 //this is the contract event
-                currentRC.PartyAdd().watch(function(err, result) {
-                    if (err) {
-                        console.log(err);
-                        return;
-                    }
-                    console.log("party change detected");
-                    console.log(res);
-                });
+                console.log("Party added: ");
+                console.log(value);
 			}).catch(function(e) {
 					console.log(e);
 					setStatus("Error adding parties");
@@ -188,21 +182,42 @@ function withdraw() {
 
 
 function updateContractState() {
+    //TODO: change this first part to use Promise.all().then() style
+
     var c = document.getElementById("contractState");
     console.log(RightsContractFactory.deployed().add);
-    c.innerHTML = "RightsContractFactory addr: " + RightsContractFactory.deployed().address.valueOf() + "<br>";
-    c.innerHTML += "RightsContract addr: " + currentRC.address + "<br>";
-
-    var num;
-    currentRC.showNumberPartyAddresses.call({from: account}).then(function(value) {num = value;});
-    c.innerHTML += "Number of parties: " + num.valueOf() + "<br>";
+    c.innerHTML = "<b>RightsContractFactory addr: </b>" + RightsContractFactory.deployed().address.valueOf() + "<br>";
+    c.innerHTML += "<b>RightsContract addr: </b>" + currentRC.address + "<br><br>";
 
     var metadataHash;
-    currentRC.showMetaHash.call({from: account}).then(function(value) {metadataHash = value;});
-    c.innerHTML += "IPFS Hash: " + metadataHash.valueOf() + "<br>";
-    c.innerHTML += "Direct link to IPFS gateway: https://gateway.ipfs.io/ipfs/" + metadataHash.valueOf() +"<br>";
+    currentRC.showMetaHash.call({from: account}).then(function(value) {
+        metadataHash = value.valueOf();
+        c.innerHTML += "<b>IPFS Hash: </b>" + metadataHash + "<br><br>";
+        c.innerHTML += "<b>Direct link to IPFS gateway: </b> <a href=https://gateway.ipfs.io/ipfs/" + metadataHash +">https://gateway.ipfs.io/ipfs/" + metadataHash + "</a><br><br>";
+    });
 
+    var num;
+    currentRC.showNumberPartyAddresses.call({from: account}).then(function(value) {
+        num = value.toNumber();
+        c.innerHTML += "<b>Number of parties: </b>" + num + "<br><br>";
+        if (num != 0) {
+            c.innerHTML += "<b>Participants</b><br><br>";
+            getAllPartyInfo();
+        }
+    });
 
+    function getAllPartyInfo() {
+        for (i = 0; i < num; i++) {
+            //TODO: Add showPartyVote function (here and in the .sol file)
+            Promise.all([
+                currentRC.showAddrs.call(i, {from: account}),
+                currentRC.showPartyName.call(i, {from: account}), currentRC.showPartyRole.call(i, {from: account}), currentRC.showPartySplit.call(i, {from: account}), currentRC.showPartyAccept.call(i, {from: account})]
+            ).then(function(results){
+                    var info = "<b>Address: </b>" + results[0].valueOf() + "<br><b>Name: </b>" + results[1].valueOf() + "<br><b>Role: </b>" + results[2].valueOf() + "<br><b>Split: </b>" + results[3].toNumber() + "<br><b>Accepted Contract: </b>" + results[4].toString() + "<br><br>";
+                    c.innerHTML += info;
+                }).catch(function(err){console.log(err);});
+        }
+    }
 }
 
 
