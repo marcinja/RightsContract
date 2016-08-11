@@ -28,6 +28,18 @@ contract RightsContract {
         }
     }
 
+    modifier atAccepted {
+        if (stage == Stages.Accepted){
+            _
+        }
+    }
+
+    modifier atInvalid{
+        if (stage == Stages.Invalid){
+            _
+        }
+    }
+
     //People who are allowed to make changes to this contract
     mapping (address => bool) public Permission;
 
@@ -115,14 +127,23 @@ contract RightsContract {
 
         //causes cap of 100 for participants which shouldn't matter, but is stupid design. 'integer literal is needed for array length'
         address[100] memory temp;
+        uint addrIndex;
 
         for (uint i = 0; i < arrLength; i++){
-            if (Permission[partyAddresses[i]]){
+            if (partyAddresses[i] != _addr){
                 temp[i] = partyAddresses[i];
+            } else {
+                addrIndex = i;
+                break;
             }
         }
-        for (uint j = 0; j < arrLength; j++){
-            partyAddresses.push(temp[j]);
+
+        for (uint j = addrIndex; j < arrLength - 1; j++){
+            temp[j] = partyAddresses[j+1];
+        }
+
+        for (uint k = 0; k < arrLength - 1; k++){
+            partyAddresses[k] = temp[k];
         }
 
         delete partyAddresses;
@@ -172,30 +193,56 @@ contract RightsContract {
         votes[msg.sender] = addr;
     }
 
-    function setMetaHash() hasPermission isValid {
-        if (!checkVotes()){
+    //Can be done at Accepted or Published
+    function setMetaHash() hasPermission {
+        if (stage != Stages.Published && stage != Stages.Accepted){
             throw;
         }
-        ipfsHash = proposals[votes[partyAddresses[0]]];
-        //stage = Stages(2);
+
+        uint majorityProposalIndex = checkVotes();
+        if (majorityProposalIndex == 101){
+            throw;
+        }
+
+        ipfsHash = proposals[partyAddresses[majorityProposalIndex]];
+        stage = Stages.Published;
+
+        //After metadata is set, votes are cleared (but proposals stay)
+        for (uint i = 0; i < numberpartyAddresses; i++){
+            delete votes[partyAddresses[i]];
+        }
     }
 
-    function checkVotes() public constant returns (bool retVal){
-        address addr = votes[partyAddresses[0]];
+    function checkVotes() public constant returns(uint retVal){
+        mapping(address => uint) count;
+        uint majorityProposal;
+        uint maxVote = 0;
+
         for (uint i = 0; i < numberpartyAddresses; i++){
-            if (addr != partyAddresses[i]) {
-                return false;
+            address ithVote = votes[partyAddresses[i]];
+            count[ithVote] += 1;
+        }
+
+        for (uint j = 0; j < numberpartyAddresses; j++){
+           if (count[partyAddresses[j]] > maxVote){
+                maxVote = count[partyAddresses[j]];
+                majorityProposal = j;
             }
         }
-        return true;
+
+        if (maxVote > (numberpartyAddresses / 2)){
+            return majorityProposal;
+        } else {
+            //Since 100 is the max number of parties allowed
+           return 101;
+       }
     }
 
     //Payments:
     bool paymentsUnlocked;
 
     //Should be available atPublished(?) only
-    function unlockPayments() hasPermission atDrafted isValid{
-        stage = Stages.Accepted;
+    function unlockPayments() hasPermission atAccepted isValid{
         paymentsUnlocked = true;
     }
 
@@ -228,10 +275,24 @@ contract RightsContract {
         }
     }
 
-    //Stops advancement of contract. Indicates some real world communication will be needed. (Code isn't the law here)
+    //Stops advancement of contract. Indicates some real world communication will be needed.
     function claimInvalid() hasPermission{
         stage = Stages.Invalid;
         paymentsUnlocked = false;
+        numberAccepted = 0;
+    }
+
+    //If everyone "accepts" contract again, contract moves to drafted state again.
+    function reinstateContract() hasPermission atInvalid {
+        if (!checkSplit()){
+            throw;
+        }
+        numberAccepted++;
+        uint s = numberpartyAddresses - numberAccepted;
+        if (s == 0) {
+            stage = Stages.Drafted;
+            numberAccepted = 0;
+        }
     }
 
     //Below are contant functions for displaying contract info:
@@ -261,5 +322,9 @@ contract RightsContract {
 
     function showPartyAccept(uint i) public constant returns(bool _accepts){
         return Participants[partyAddresses[i]].accepts;
+    }
+
+    function showPartyVote(uint i) public constant returns(address _vote){
+        return votes[partyAddresses[i]];
     }
 }
