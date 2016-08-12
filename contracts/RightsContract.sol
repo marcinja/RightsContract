@@ -300,7 +300,7 @@ contract RightsContract {
         return ipfsHash;
     }
 
-    function shownumberPartyAddresses() public constant returns(uint retVal) {
+    function showNumberPartyAddresses() public constant returns(uint retVal) {
         return numberPartyAddresses;
     }
 

@@ -6,7 +6,63 @@ var currentRCaddr;
 var currentRC;
 var paymentAllowed;
 
+var drafted;
+var payments;
+var meta;
+var invalid;
+
 var factory = RightsContractFactory.deployed();
+
+function toggleDisplay(docID) {
+    var x = document.getElementById(docID);
+    if (x.style.display === 'none') {
+        x.style.display = 'block';
+    } else {
+        x.style.display = 'none';
+    }
+};
+
+function loadStageHTML() {
+    currentRC.checkStage.call({from: account}).then(
+        function(value){
+            switch(value.toNumber()) {
+                case 0:
+                    drafted.style.display = 'block';
+                    meta.style.display = 'block';
+                    payments.style.display ='none';
+                    invalid.style.display = 'block';
+                    document.getElementById('setMetaButton').disabled = true;
+                    break;
+                case 1:
+                    drafted.style.display ='none';
+                    payments.style.display = 'block';
+                    meta.style.display = 'block';
+                    invalid.style.display ='block';
+                    document.getElementById('setMetaButton').disabled = false;
+                    break;
+                case 2:
+                    drafted.style.display = 'none';
+                    payments.style.display = 'block';
+                    payments.style.display = 'block';
+                    invalid.style.display ='block';
+                    document.getElementById('setMetaButton').disabled = false;
+                    stage = "Published";
+                    break;
+                case 3:
+                    drafted.style.display = 'none';
+                    payments.style.display = 'none';
+                    meta.style.display = 'none';
+                    invalid.style.display ='block';
+                    document.getElementById('setMetaButton').disabled = true;
+                    stage = "Invalid";
+                    break;
+            }
+        }
+
+    ).catch(function(e){
+        console.log(e)
+    })
+};
 
 function initRightsContract() {
     var name = document.getElementById("newRightsContract").value;
@@ -30,14 +86,12 @@ function initRightsContract() {
             console.log(e);
     });
 });
-    factory.initiateContract(name, account, {from: account, gas: 3111123}).then(
+    factory.initiateContract(name, account, {from: account, gas: 1512100}).then(
 	       function(value) {
-            //var m = RightsContractFactory.at(RightsContractFactory.deployed().address);
-			setStatus("RightsContract created");
             console.log(value);
         }).catch(function(e) {
 		console.log(e);
-		setStatus("Error creating RightsContract ");
+
 		});
 };
 
@@ -48,6 +102,8 @@ function setRightsContract(name, addr) {
     RC_name.innerHTML = name.valueOf();
     RC_addr.innerHTML = addr.valueOf();
     currentRC = RightsContract.at(currentRCaddr);
+    loadStageHTML();
+    updateContractState();
 };
 
 function selectRightsContract() {
@@ -56,7 +112,6 @@ function selectRightsContract() {
         setRightsContract(name, value);
     }).catch(function(e) {
         console.log(e);
-        setStatus("Error selecting rights contract");
     });
 };
 
@@ -67,14 +122,12 @@ function addParty() {
 	var rightsSplit = document.getElementById("newPartySplit").value;;
 
     console.log(addr, name, role, rightsSplit);
-	currentRC.makeParty(addr, name, role, rightsSplit, {from: account, gas:3111123}).then(
+	currentRC.makeParty(addr, name, role, rightsSplit, {from: account, gas:750000}).then(
 			function(value) {
-                //this is the contract event
                 console.log("Party added: ");
                 console.log(value);
 			}).catch(function(e) {
 					console.log(e);
-					setStatus("Error adding parties");
 	});
 };
 
@@ -93,44 +146,41 @@ function removeParty() {
             });
         }).catch(function(e) {
             console.log(e);
-            setStatus("Error removing parties");
         });
 };
 
 function allowPayments() {
-    //TODO: ADD function to set PC in html, and in global scope
-    currentRC.unlockPayments({from: account}).then(
+    currentRC.unlockPayments({from: account, gas:50000}).then(
         function() {
             paymentAllowed = true;
-            setStatus("Payments Now Allowed");
+            updateContractState();
         }).catch(function(e) {
             console.log(e);
-            setStatus("Error unlocking payments");
         });
 };
 
 function setNewMeta() {
-    currentRC.setMetaHash({from: account}).then(
-        function() {
-            //TODO: add parameter to specify which rights contract to listen to for new PC's
-            currentRC.MetaUpdate().watch(function(err, result) {
-                if (err) {
-                    console.log(err);
-                    return;
-                }
-                console.log("new metadata selected")
-                console.log(res);
-            })
+    currentRC.MetaUpdate().watch(function(err, result) {
+        if (err) {
+            console.log(err);
+            return;
+        }
+        console.log(res);
+        loadStageHTML();
+        updateContractState();
+    })
+    currentRC.setMetaHash({from: account, gas: 123123}).then(function(value) {
+        console.log(value)
         }).catch(function(e) {
             console.log(e);
-            setStatus("Error selecting metadata");
         });
 };
 
 function acceptContract() {
-    currentRC.acceptTerms({from: account}).then(
+    currentRC.acceptTerms({from: account, gas: 123123}).then(
         function() {
             console.log("contract accepted");
+            loadStageHTML();
         }).catch(function(e) {
             console.log(e);
             console.log("error in accepting contract")
@@ -139,7 +189,7 @@ function acceptContract() {
 
 function createMetaProposal() {
     var newProposal = document.getElementById("newProposal").value;
-    currentRC.createProposal(newProposal, {from: account}).then(
+    currentRC.createProposal(newProposal, {from: account, gas:50000}).then(
         function() {
             console.log("proposal created");
     }).catch(function(e) {
@@ -150,7 +200,7 @@ function createMetaProposal() {
 
 function voteForMetaProposal() {
     var addr = document.getElementById("voteAddr").value;
-    currentRC.vote(addr, {from: account}).then(
+    currentRC.vote(addr, {from: account, gas: 50000}).then(
         function() {
             console.log("vote successful");
         }).catch(function(e) {
@@ -172,22 +222,49 @@ function checkUserBalance() {
 };
 
 function withdraw() {
-    currentRC.withdrawBalance({from: account}).then(function(){
+    currentRC.withdrawBalance({from: account, gas: 50000}).then(function(){
         console.log("Funds withdrawn");
+        checkUserBalance();
     }).catch(function(e) {
         console.log(e);
         console.log("error withdrawing funds");
     });
 };
 
+/*function makeInvalid() {
+    currentRC.claimInvalid({from: account, gas: 120000})
+}*/
 
 function updateContractState() {
     //TODO: change this first part to use Promise.all().then() style
-
+    loadStageHTML();
     var c = document.getElementById("contractState");
-    console.log(RightsContractFactory.deployed().add);
+
     c.innerHTML = "<b>RightsContractFactory addr: </b>" + RightsContractFactory.deployed().address.valueOf() + "<br>";
     c.innerHTML += "<b>RightsContract addr: </b>" + currentRC.address + "<br><br>";
+
+    currentRC.checkStage.call({from: account}).then(
+        function(value){
+            x = "<b>Contract Stage: </b>";
+            var stage;
+            switch(value.toNumber()) {
+                case 0:
+                    stage = "Drafted";
+                    break;
+                case 1:
+                    stage = "Accepted";
+                    break;
+                case 2:
+                    stage = "Published";
+                    break;
+                case 3:
+                    stage = "Invalid";
+                    break;
+            }
+            x += stage + "<br><br>";
+            c.innerHTML += x;
+        }
+    );
 
     var metadataHash;
     currentRC.showMetaHash.call({from: account}).then(function(value) {
@@ -218,14 +295,9 @@ function updateContractState() {
                 }).catch(function(err){console.log(err);});
         }
     }
-}
-
-
-
-function setStatus(message) {
-  var status = document.getElementById("status");
-  status.innerHTML = message;
 };
+
+
 
 window.onload = function() {
   web3.eth.getAccounts(function(err, accs) {
@@ -239,7 +311,15 @@ window.onload = function() {
       return;
     }
 
+    //TODO: Let users select default account from web3.eth.accounts[]
     accounts = accs;
     account = accounts[0];
   });
+
+  drafted = document.getElementById('MakeRemoveParty');
+  payments = document.getElementById('Payments');
+  meta = document.getElementById('MetaVotePropose');
+  invalid = document.getElementById('Invalid');
+
+  drafted.style.display = payments.style.display = meta.style.display = invalid.style.display = 'none';
   }

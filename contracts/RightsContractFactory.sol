@@ -16,8 +16,6 @@ contract RightsContractFactory { //needs better name (?)
 
     function initiateContract(bytes32 name) {
         //Names cannot be overwritten. Instead, they must be deleted first.
-
-        //TODO: test this if-statement
         if (contracts[name] != 0x0){
             throw;
         }
@@ -41,9 +39,6 @@ contract RightsContractFactory { //needs better name (?)
             if (c.checkPermission(msg.sender) || (msg.sender == creator)) {
                 //Delete contract data inside?
                 //c.delete()
-
-                //not sure how this behaves exactly
-                //contracts[name] = "" 0x0 0 might be better
                 delete contracts[name];
             }
         }
