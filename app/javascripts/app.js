@@ -23,7 +23,7 @@ function toggleDisplay(docID) {
 };
 
 function loadStageHTML() {
-    currentRC.checkStage.call({from: account}).then(
+    currentRC.getStage.call({from: account}).then(
         function(value){
             switch(value.toNumber()) {
                 case 0:
@@ -108,7 +108,7 @@ function setRightsContract(name, addr) {
 
 function selectRightsContract() {
 	var name = document.getElementById("selectRC").value;
-    factory.showContractAddr.call(name, {from: account}).then(function(value) {
+    factory.getContractAddr.call(name, {from: account}).then(function(value) {
         setRightsContract(name, value);
     }).catch(function(e) {
         console.log(e);
@@ -209,22 +209,22 @@ function voteForMetaProposal() {
         });
 };
 
-function checkUserBalance() {
+function getUserBalance() {
     var bal;
-    currentRC.checkBalance.call({from: account}).then(function(value) {
+    currentRC.getBalance.call({from: account}).then(function(value) {
         console.log("User Balance retrieved");
         bal = value;
         document.getElementById("balanceCheck").innerHTML = bal;
     }).catch(function(e) {
         console.log(e);
-        console.log("error in checking user balance");
+        console.log("error in getting user balance");
     });
 };
 
 function withdraw() {
     currentRC.withdrawBalance({from: account, gas: 50000}).then(function(){
         console.log("Funds withdrawn");
-        checkUserBalance();
+        getUserBalance();
     }).catch(function(e) {
         console.log(e);
         console.log("error withdrawing funds");
@@ -243,7 +243,7 @@ function updateContractState() {
     c.innerHTML = "<b>RightsContractFactory addr: </b>" + RightsContractFactory.deployed().address.valueOf() + "<br>";
     c.innerHTML += "<b>RightsContract addr: </b>" + currentRC.address + "<br><br>";
 
-    currentRC.checkStage.call({from: account}).then(
+    currentRC.getStage.call({from: account}).then(
         function(value){
             x = "<b>Contract Stage: </b>";
             var stage;
@@ -267,14 +267,14 @@ function updateContractState() {
     );
 
     var metadataHash;
-    currentRC.showMetaHash.call({from: account}).then(function(value) {
+    currentRC.getMetaHash.call({from: account}).then(function(value) {
         metadataHash = value.valueOf();
         c.innerHTML += "<b>IPFS Hash: </b>" + metadataHash + "<br><br>";
         c.innerHTML += "<b>Direct link to IPFS gateway: </b> <a href=https://gateway.ipfs.io/ipfs/" + metadataHash +">https://gateway.ipfs.io/ipfs/" + metadataHash + "</a><br><br>";
     });
 
     var num;
-    currentRC.showNumberPartyAddresses.call({from: account}).then(function(value) {
+    currentRC.getNumberPartyAddresses.call({from: account}).then(function(value) {
         num = value.toNumber();
         c.innerHTML += "<b>Number of parties: </b>" + num + "<br><br>";
         if (num != 0) {
@@ -285,10 +285,10 @@ function updateContractState() {
 
     function getAllPartyInfo() {
         for (i = 0; i < num; i++) {
-            //TODO: Add showPartyVote function (here and in the .sol file)
+            //TODO: Add getPartyVote function (here and in the .sol file)
             Promise.all([
-                currentRC.showAddrs.call(i, {from: account}),
-                currentRC.showPartyName.call(i, {from: account}), currentRC.showPartyRole.call(i, {from: account}), currentRC.showPartySplit.call(i, {from: account}), currentRC.showPartyAccept.call(i, {from: account})]
+                currentRC.getAddrs.call(i, {from: account}),
+                currentRC.getPartyName.call(i, {from: account}), currentRC.getPartyRole.call(i, {from: account}), currentRC.getPartySplit.call(i, {from: account}), currentRC.getPartyAccept.call(i, {from: account})]
             ).then(function(results){
                     var info = "<b>Address: </b>" + results[0].valueOf() + "<br><b>Name: </b>" + results[1].valueOf() + "<br><b>Role: </b>" + results[2].valueOf() + "<br><b>Split: </b>" + results[3].toNumber() + "<br><b>Accepted Contract: </b>" + results[4].toString() + "<br><br>";
                     c.innerHTML += info;

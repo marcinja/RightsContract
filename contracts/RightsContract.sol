@@ -1,5 +1,6 @@
 
 contract RightsContract {
+    //TODO: Review voting procedure from Drafted -> Accepted,
 
     enum Stages {
         Drafted,
@@ -12,7 +13,7 @@ contract RightsContract {
     function RightsContract() {
         stage = Stages.Drafted;
         numberPartyAddresses = 0;
-        splitTotal = 0;
+        numberAccepted = 0;
     }
 
     //Modifiers to ensure contract changes can be locked in
@@ -54,7 +55,7 @@ contract RightsContract {
     uint splitTotal;
 
     //The meta data;
-    string ipfsHash;
+    string contractHash;
 
     //Structure for person involved in contract
     struct Party {
@@ -82,10 +83,8 @@ contract RightsContract {
         }
     }
 
-    function checkPermission(address addr) public constant returns(bool retVal){
-        return Permission[addr];
-    }
-
+    //Intended for use when first creating the contract
+    //i.e. to let the creator add themselves as a party
     function setPermission(address addr){
         if (numberPartyAddresses != 0){
             throw;
@@ -93,12 +92,8 @@ contract RightsContract {
         Permission[addr] = true;
     }
 
-
-    function checkStage() public constant returns (uint retVal){
-        return uint(stage);
-    }
-
     //Fails if splitTotal goes over 100
+    //Contract can be payment-less if the split == 0
     function makeParty(address _addr, string _name, string _role, uint _rightsSplit) hasPermission atDrafted {
         if (!(splitTotal + _rightsSplit <= 100)) {
             throw;
@@ -114,6 +109,9 @@ contract RightsContract {
         partyAddresses.push(_addr);
         splitTotal += _rightsSplit;
         numberPartyAddresses += 1;
+        if (numberAccepted != 0) {
+            resetAccepts();
+        }
     }
 
     function removeParty(address _addr) hasPermission atDrafted{
@@ -149,6 +147,18 @@ contract RightsContract {
         }
 
         numberPartyAddresses -= 1;
+        if (numberAccepted != 0) {
+            resetAccepts();
+        }
+    }
+
+    //Can only be called within contract
+    //(Intermediate Accept -> Drafted)
+    function resetAccepts() internal {
+        for (uint i = 0; i < numberPartyAddresses; i++){
+            Participants[partyAddresses[i]].accepts = false;
+            numberAccepted = 0;
+        }
     }
 
     function checkSplit() public constant returns (bool retVal){
@@ -156,7 +166,7 @@ contract RightsContract {
         for (uint i = 0; i < numberPartyAddresses; i++){
             sum += Participants[partyAddresses[i]].rightsSplit;
         }
-        if (sum == 100){
+        if (sum == 100 || sum == 0){
             return true;
         } else {
             return false;
@@ -165,7 +175,7 @@ contract RightsContract {
 
     //If all partyAddresses have accepted, move to Accepted, and allow for PaymentContract creation
     function acceptTerms() hasPermission atDrafted {
-        if (!checkSplit()){
+        if (!checkSplit() || Participants[msg.sender].accepts){
             throw;
         }
         numberAccepted++;
@@ -204,7 +214,7 @@ contract RightsContract {
             throw;
         }
 
-        ipfsHash = proposals[partyAddresses[majorityProposalIndex]];
+        contractHash = proposals[partyAddresses[majorityProposalIndex]];
         stage = Stages.Published;
 
         //After metadata is set, votes are cleared (but proposals stay)
@@ -243,16 +253,19 @@ contract RightsContract {
 
     //Should be available atPublished(?) only
     function unlockPayments() hasPermission atAccepted isValid{
+        //if split == 0 then payments cannot be made.
+        if (splitTotal != 100) {
+            throw;
+        }
         paymentsUnlocked = true;
-    }
-
-    function showPaymentsUnlocked() public constant returns(bool retVal){
-        return paymentsUnlocked;
     }
 
     event Payment (address indexed sender, string indexed from, string indexed  purpose);
 
     function sendPayment(string _from, string _purpose) {
+        if (!paymentsUnlocked){
+            throw;
+        }
         uint total = msg.value;
         for (uint i = 0; i < numberPartyAddresses; i++){
             address p = partyAddresses[i];
@@ -263,7 +276,7 @@ contract RightsContract {
         Payment(msg.sender, _from, _purpose);
     }
 
-    function checkBalance() constant returns (uint retVal) {
+    function getBalance() constant returns (uint retVal) {
         return balance[msg.sender];
     }
 
@@ -284,7 +297,7 @@ contract RightsContract {
 
     //If everyone "accepts" contract again, contract moves to drafted state again.
     function reinstateContract() hasPermission atInvalid {
-        if (!checkSplit()){
+        if (!checkSplit() || Participants[msg.sender].accepts){
             throw;
         }
         numberAccepted++;
@@ -292,39 +305,52 @@ contract RightsContract {
         if (s == 0) {
             stage = Stages.Drafted;
             numberAccepted = 0;
+            resetAccepts();
         }
     }
 
     //Below are contant functions for displaying contract info:
-    function showMetaHash() public constant returns(string retVal) {
-        return ipfsHash;
+    function getStage() public constant returns (uint retVal){
+        return uint(stage);
     }
 
-    function showNumberPartyAddresses() public constant returns(uint retVal) {
+    function getHash() public constant returns(string retVal) {
+        return contractHash;
+    }
+
+    function getPaymentsUnlocked() public constant returns(bool retVal){
+        return paymentsUnlocked;
+    }
+
+    function getNumberPartyAddresses() public constant returns(uint retVal) {
         return numberPartyAddresses;
     }
 
-    function showAddrs(uint i) public constant returns(address retVal) {
+    function getPermission(address addr) public constant returns(bool retVal){
+        return Permission[addr];
+    }
+
+    function getAddrs(uint i) public constant returns(address retVal) {
         return partyAddresses[i];
     }
 
-    function showPartyName(uint i) public constant returns(string _name){
+    function getPartyName(uint i) public constant returns(string _name){
         return Participants[partyAddresses[i]].name;
     }
 
-    function showPartyRole(uint i) public constant returns(string _role){
+    function getPartyRole(uint i) public constant returns(string _role){
         return Participants[partyAddresses[i]].role;
     }
 
-    function showPartySplit(uint i) public constant returns(uint _split){
+    function getPartySplit(uint i) public constant returns(uint _split){
         return Participants[partyAddresses[i]].rightsSplit;
     }
 
-    function showPartyAccept(uint i) public constant returns(bool _accepts){
+    function getPartyAccept(uint i) public constant returns(bool _accepts){
         return Participants[partyAddresses[i]].accepts;
     }
 
-    function showPartyVote(uint i) public constant returns(address _vote){
+    function getPartyVote(uint i) public constant returns(address _vote){
         return votes[partyAddresses[i]];
     }
 }
