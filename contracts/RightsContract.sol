@@ -188,8 +188,8 @@ contract RightsContract {
     function createProposal(string _proposal) hasPermission {
         //If anyone has voted for your proposal(other than yourself), throw.
         for (uint i = 0; i < numberPartyAddresses; i++){
-            if (votes[partyAddresses[i]] == msg.sender && partyAddresses[i] != msg.sender){
-                throw;
+            if (votes[partyAddresses[i]] == msg.sender){
+                delete votes[partyAddresses[i]];
                 }
             }
         proposals[msg.sender] = _proposal;
