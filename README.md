@@ -43,7 +43,9 @@ TODO: Explain this stage.
 TODO: Explain who can interact with the contract, and in what way.
 
 ## Diagram
-![State Machine Diagram](/statemachinediagram.svg)
+![State Machine Diagram](/statemachinediagram.jpg)
+
+
 
 ## Example Use case
 TODO: Add example in music rights. Put project into one folder, add example folder with IPFS hash pointing to small file-system:
