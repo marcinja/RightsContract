@@ -1,10 +1,8 @@
 import "./RightsContract.sol";
 
-contract RightsContractFactory { //needs better name (?)
+contract RightsContractFactory {
     address public creator;
 
-    //Still considering different options for naming contracts.
-    //OR JUST USE CONTRACT ADDRESS
     mapping (bytes32 => address) public contracts;
 
 
@@ -24,7 +22,7 @@ contract RightsContractFactory { //needs better name (?)
         RightsContractCreated(name, c);
     }
 
-    function showContractAddr(bytes32 _name) public constant returns(address retVal){
+    function getContractAddr(bytes32 _name) public constant returns(address retVal){
         return contracts[_name];
     }
 
@@ -35,10 +33,8 @@ contract RightsContractFactory { //needs better name (?)
         }
         RightsContract c = RightsContract(cAddr);
         //Check if c is invalid
-        if (c.checkStage() == 3){
-            if (c.checkPermission(msg.sender) || (msg.sender == creator)) {
-                //Delete contract data inside?
-                //c.delete()
+        if (c.getStage() == 3){
+            if (c.getPermission(msg.sender) || (msg.sender == creator)) {
                 delete contracts[name];
             }
         }

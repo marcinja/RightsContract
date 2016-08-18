@@ -20,39 +20,39 @@ Every RightsContract can be modeled with a finite state machine. Calling functio
 E
 very contract starts off in the `Drafted` stage. Once all participants have agreed on the set of participants involved, the contract moves to the `Accepted` stage. Then, if the payment split is nonzero the contract will allow for anyone to send payments to the contract. Those payments will be split as determined by the participants.
 
-In the `Drafted` and `Accepted` stages (and also the `Published` stage later) participants
+In the `Drafted` and `Accepted` stages (and also the `Published` stage later) participants can make proposals for the hash that will be stored in the contract, and also vote for them. Once the contract is in the `Accepted` stage, if a majority of participants have voted for someone's proposal, that proposal will be published to the contract as the official hash.
+
+At any stage, participants can dispute the contract and put it into the `Invalid` stage. At that point, a new hash cannot be set and payments can no longer be recieved. At that point, if all participants agree to reinstate the contract they reenter the `Drafted` stage. This allows participants to change who is allowed to participate in the contract.
+
+This mechanism has potential for abuse, but TODO::::::::::::::::::
 
 ### Drafted
 In this initial stage, the person who first created the contract has permission to add/remove parties. It's important to recognize that the creator is **not** automatically added as participant of the contract, but should add themselves to the contract first. As is, this means the person creating the contract should be an active participant.
 
-TODO: Address how this might affect voting dynamics for moving to the `Accepted` stage. That initial creator will have permission to add/remove parties and also to invalidate the contract!
+Once all desired participants have been added to the contract, they must all accept the contract for it to move forward. In this stage the only meaningful actions are: adding participants, removing them, and accepting the contract.
+
+Note that the splits of the participants must either sum to 100 or to 0. In the former case, they represent percentage of ownership, and the percentage received from each payment. The latter makes the contract function in the same way, except the contract will not accept payments.
 
 ### Accepted
-TODO: Explain this stage.
+Once all participants have accepted the contract's first stage, they move forward to the `Accepted` stage. If the splits of the parties involved adds up to 100, then payments can then be unlocked by any party. Splits act as percentages; if a participant has a split 20, he gets 20% of every payments.
 
 ### Published
-TODO: Explain this stage.
+At any point in the `Drafted` and `Published` stages, participants can submit proposals for a hash. They can also vote on each other's proposals. Once the contract is past the `Drafted` stage, votes can actually be counted. If a user attempts to set the hash, and a majority of contract participants have voted on the same proposal, that proposal becomes the hash associated with the contract. Then votes are reset, and users can vote again if they wish to change the hash.
 
 ### Invalid
-TODO: Explain this stage.
+At any other stage of the contract, a participant can claim it to be invalid. This acts as a signal to other participants (and third parties as well) that something is not working out, and extra communication between participants is needed to continue.
+
+No payments are accepted in this stage. Nobody can set a new hash in this stage.
+
+Once some kind of communication has been resolved, the contract can move from `Invalid` to `Drafted` if all participants agree to reinstate the contract. This allows the set of participants in the contract to be edited.
 
 ### Note on Intermediary Stages
-TODO: Explain this stage.
-
-### Note on Contract Permissions
-TODO: Explain who can interact with the contract, and in what way.
+The contract moves between stages by means of voting. This means that the true state machine that represents the contract has intermediary stages where only a subset of participants have accepted the contract (between `Drafted` and `Accepted`), and when no proposal has a majority of votes (between `Accepted` and `Published`).
 
 ## Diagram
 ![State Machine Diagram](/statemachinediagram.jpg)
 
-
-
 ## Example Use case
-TODO: Add example in music rights. Put project into one folder, add example folder with IPFS hash pointing to small file-system:
+Check the `example` folder for what kind of information participants might want to put in the contract. The IPFS hash for that folder is: `QmVF7k7ts8sKp1caMmZ92S2CQ9UcjZ6Zm6hAggvSG9crg8`. This hash is the only information that is stored in the Ethereum contract and acts as a pointer to the folder.
 
-    * metadata.json
-    * song.mp3 (or hash of song)
-    * contract.pdf
-    * contract.md
-
-TODO: Add screenshots
+Users are free include whatever they'd like. This means they share the actual files for their songs, along with sheet music, and fully disclose their contract. Alternatively, they could share encrypted versions of those files, or just cryptographic hashes of them to use the RightsContract as a proof of ownership in some way.

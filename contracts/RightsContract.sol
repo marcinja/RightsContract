@@ -195,10 +195,6 @@ contract RightsContract {
         proposals[msg.sender] = _proposal;
     }
 
-    function getProposal(address addr) constant returns (string _proposal){
-        return proposals[addr];
-    }
-
     function vote(address addr) hasPermission {
         votes[msg.sender] = addr;
     }
@@ -269,7 +265,7 @@ contract RightsContract {
         uint total = msg.value;
         for (uint i = 0; i < numberPartyAddresses; i++){
             address p = partyAddresses[i];
-            uint owed = total / Participants[p].rightsSplit;
+            uint owed = total * (Participants[p].rightsSplit / 100);
             balance[p] += owed;
             total += owed;
         }
@@ -352,5 +348,9 @@ contract RightsContract {
 
     function getPartyVote(uint i) public constant returns(address _vote){
         return votes[partyAddresses[i]];
+    }
+
+    function getPartyProposal(uint i) constant returns (string _proposal){
+        return proposals[partyAddresses[i]];
     }
 }

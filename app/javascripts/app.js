@@ -1,4 +1,4 @@
-var accounts;
+ var accounts;
 var account;
 var balance;
 
@@ -43,7 +43,7 @@ function loadStageHTML() {
                 case 2:
                     drafted.style.display = 'none';
                     payments.style.display = 'block';
-                    payments.style.display = 'block';
+                    meta.style.display = 'block';
                     invalid.style.display ='block';
                     document.getElementById('setMetaButton').disabled = false;
                     stage = "Published";
@@ -54,6 +54,7 @@ function loadStageHTML() {
                     meta.style.display = 'none';
                     invalid.style.display ='block';
                     document.getElementById('setMetaButton').disabled = true;
+                    document.getElementById('reinstate').disabled = false;
                     stage = "Invalid";
                     break;
             }
@@ -117,9 +118,9 @@ function selectRightsContract() {
 
 function addParty() {
 	var addr = document.getElementById("newPartyAddr").value;
-	var name = document.getElementById("newPartyName").value;;
-	var role = document.getElementById("newPartyRole").value;;
-	var rightsSplit = document.getElementById("newPartySplit").value;;
+	var name = document.getElementById("newPartyName").value;
+	var role = document.getElementById("newPartyRole").value;
+	var rightsSplit = document.getElementById("newPartySplit").value;
 
     console.log(addr, name, role, rightsSplit);
 	currentRC.makeParty(addr, name, role, rightsSplit, {from: account, gas:750000}).then(
@@ -134,20 +135,15 @@ function addParty() {
 function removeParty() {
     //Add prompt to make sure!
     var addr = document.getElementById("removePartyAddr").value;
-    currentRC.removeParty(addr, {from: account}).then(
+    var r = confirm("Are you sure you want to remove this party?");
+    if (r == false){
+        return;
+    }
+    currentRC.removeParty(addr, {from: account, gas: 750000}).then(
         function() {
-            currentRC.PartyAdd().watch(function(err, result) {
-                if (err) {
-                    console.log(err);
-                    return;
-                }
-                console.log("party change detected");
-                console.log(res);
-            });
-        }).catch(function(e) {
-            console.log(e);
+            updateContractState();
         });
-};
+    };
 
 function allowPayments() {
     currentRC.unlockPayments({from: account, gas:50000}).then(
@@ -160,15 +156,6 @@ function allowPayments() {
 };
 
 function setNewMeta() {
-    currentRC.MetaUpdate().watch(function(err, result) {
-        if (err) {
-            console.log(err);
-            return;
-        }
-        console.log(res);
-        loadStageHTML();
-        updateContractState();
-    })
     currentRC.setMetaHash({from: account, gas: 123123}).then(function(value) {
         console.log(value)
         }).catch(function(e) {
@@ -180,7 +167,7 @@ function acceptContract() {
     currentRC.acceptTerms({from: account, gas: 123123}).then(
         function() {
             console.log("contract accepted");
-            loadStageHTML();
+            updateContractState();
         }).catch(function(e) {
             console.log(e);
             console.log("error in accepting contract")
@@ -189,7 +176,7 @@ function acceptContract() {
 
 function createMetaProposal() {
     var newProposal = document.getElementById("newProposal").value;
-    currentRC.createProposal(newProposal, {from: account, gas:50000}).then(
+    currentRC.createProposal(newProposal, {from: account, gas:500000}).then(
         function() {
             console.log("proposal created");
     }).catch(function(e) {
@@ -231,9 +218,42 @@ function withdraw() {
     });
 };
 
-/*function makeInvalid() {
-    currentRC.claimInvalid({from: account, gas: 120000})
-}*/
+function sendEther() {
+    var amount = web3.toWei(document.getElementById('paymentAmount').value, 'ether'); //Make sure this goes .toWei
+    var sender = document.getElementById('paymentFrom').value;
+    var purpose = document.getElementById('paymentPurpose').value;
+    currentRC.sendPayment(sender, purpose, {from: account, gas:300000, value: amount}).then(function(value) {
+        console.log(value);
+        alert("Payment Sent");
+    }).catch(function(e) {
+        console.log(e);
+        alert("Payment failed; Check console for error message");
+    });
+};
+
+//TODO: list all payments! filter by purpose, or sender
+
+function makeInvalid() {
+    var r = confirm("Are you sure you want to claim this contract is invalid?");
+    if (r == false){
+        return;
+    }
+    currentRC.claimInvalid({from: account, gas: 120000}).then(function(value) {
+        console.log(value);
+        updateContractState();
+    })
+};
+
+function voteReinstate() {
+    var r = confirm("Are you sure want to reinstate the contract?");
+    if (r == false){
+        return;
+    }
+    currentRC.reinstateContract({from: account, gas: 500000}).then(function(value) {
+        console.log(value);
+        updateContractState();
+    })
+};
 
 function updateContractState() {
     //TODO: change this first part to use Promise.all().then() style
@@ -267,7 +287,7 @@ function updateContractState() {
     );
 
     var metadataHash;
-    currentRC.getMetaHash.call({from: account}).then(function(value) {
+    currentRC.getHash.call({from: account}).then(function(value) {
         metadataHash = value.valueOf();
         c.innerHTML += "<b>IPFS Hash: </b>" + metadataHash + "<br><br>";
         c.innerHTML += "<b>Direct link to IPFS gateway: </b> <a href=https://gateway.ipfs.io/ipfs/" + metadataHash +">https://gateway.ipfs.io/ipfs/" + metadataHash + "</a><br><br>";
@@ -280,21 +300,36 @@ function updateContractState() {
         if (num != 0) {
             c.innerHTML += "<b>Participants</b><br><br>";
             getAllPartyInfo();
+            c.innerHTML += "<br><br><b>Proposals and Votes</b><br>"
+            getProposalsAndVotes();
         }
     });
 
     function getAllPartyInfo() {
         for (i = 0; i < num; i++) {
-            //TODO: Add getPartyVote function (here and in the .sol file)
             Promise.all([
                 currentRC.getAddrs.call(i, {from: account}),
                 currentRC.getPartyName.call(i, {from: account}), currentRC.getPartyRole.call(i, {from: account}), currentRC.getPartySplit.call(i, {from: account}), currentRC.getPartyAccept.call(i, {from: account})]
             ).then(function(results){
-                    var info = "<b>Address: </b>" + results[0].valueOf() + "<br><b>Name: </b>" + results[1].valueOf() + "<br><b>Role: </b>" + results[2].valueOf() + "<br><b>Split: </b>" + results[3].toNumber() + "<br><b>Accepted Contract: </b>" + results[4].toString() + "<br><br>";
+                    var info = "<b>Address: </b>" + "<div id=\"addr" + i +"\">" + results[0].valueOf() +"</div>" + "<br><b>Name: </b>" + results[1].valueOf() + "<br><b>Role: </b>" + results[2].valueOf() + "<br><b>Split: </b>" + results[3].toNumber() + "<br><b>Accepted Contract: </b>" + results[4].toString() + "<br><br>";
                     c.innerHTML += info;
                 }).catch(function(err){console.log(err);});
         }
     }
+
+    function getProposalsAndVotes() {
+        for (i = 0; i < num; i++) {
+            var nextid = 'addr' + i.toString();
+            nextid = '\'' + nextid + '\'';
+            var x = document.getElementById(nextid).value;
+            Promise.all([
+                currentRC.getPartyVote.call(x, {from: account}),
+                currentRC.getProposal.call(x, {from: account})]
+            ).then(function(results) {
+                c.innerHTML += "<b>Vote: </b>" + results[0].valueOf() +"<br><b>Proposal: </b>" + results[1].valueOf() + "<br>"
+            });
+        }
+    };
 };
 
 

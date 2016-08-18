@@ -8,8 +8,7 @@
 </head>
 <body>
   <h1>RightsContract Management System (RMS)</h1>
-  <h2>Manage media rights through a smart contract</h2>
-
+  <h2><a href=https://github.com/marcinja/RightsContract>Explained here</a></h2>
   <br>
   <h3 id="RightsContractAddr">Your Contract Address</h3>
   <h3 id="RightsContractName">Your Contract Name</h3>
@@ -71,13 +70,19 @@
   <div id='Payments'>
   <br><br>
   <h1>Payment Information</h1>
-  <br><p>To send a payment: call the sendPayment(name, purpose) function with parameters to give more information about your payment</p>
+  <br>
   <br><button onclick="allowPayments()">Enable Payments</button>
   <br><br>
   <label>Your Balance:</label><h2 id="balanceCheck"><h2>
-  <button onclick="checkUserBalance()">Get Balance</button>
+  <button onclick="getUserBalance()">Get Balance</button>
   <br><br>
   <button onclick="withdraw()">Withdraw Balance</button>
+  <br><br>
+  <h1>Send Payment</h1>
+  <br><label>From: </label><input type="text" id="paymentFrom" placeholder="e.g. Spotify"></input><br>
+  <label>Purpose: </label><input type="text" id="paymentPurpose" placeholder="e.g. 'March 2016 payment'"></input><br>
+  <label>Amount (in ether): </label><input type="text" id="paymentAmount" ></input><br><br>
+  <button onclick=sendEther()>Send Ether</button>
   </div>
 
   <br><br><br>
@@ -85,8 +90,10 @@
   <div id='Invalid'>
   <h1>Dispute Contract or Validate it</h1>
   <br><p>If you have an issue with your contract, you can prevent further action, and disable payments by making it invalid.</p><br>
-  <button onclick = makeInvalid()>Invalidate</button><br><br>
+  <button onclick=makeInvalid()>Invalidate</button><br><br>
   <p>If your contract is in an invalid state, but you now accept its terms, you can vote to move the contract state forward here: </p>
+  <br>
+  <button onclick=voteReinstate() id="reinstate" disabled=true>Reinstate</button>
   </div>
 
 </body>
