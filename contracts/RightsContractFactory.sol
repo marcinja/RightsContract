@@ -21,7 +21,7 @@ contract RightsContractFactory {
         contracts[name] = c;
         RightsContractCreated(name, c);
     }
-
+    
     function getContractAddr(bytes32 _name) public constant returns(address retVal){
         return contracts[_name];
     }
@@ -32,7 +32,7 @@ contract RightsContractFactory {
             throw;
         }
         RightsContract c = RightsContract(cAddr);
-        //Check if c is invalid
+        //Check if c is disputed
         if (c.getStage() == 3){
             if (c.getPermission(msg.sender) || (msg.sender == creator)) {
                 delete contracts[name];

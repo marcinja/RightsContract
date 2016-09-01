@@ -9,7 +9,7 @@ var paymentAllowed;
 var drafted;
 var payments;
 var meta;
-var invalid;
+var disputed;
 
 var factory = RightsContractFactory.deployed();
 
@@ -30,21 +30,21 @@ function loadStageHTML() {
                     drafted.style.display = 'block';
                     meta.style.display = 'block';
                     payments.style.display ='none';
-                    invalid.style.display = 'block';
+                    disputed.style.display = 'block';
                     document.getElementById('setMetaButton').disabled = true;
                     break;
                 case 1:
                     drafted.style.display ='none';
                     payments.style.display = 'block';
                     meta.style.display = 'block';
-                    invalid.style.display ='block';
+                    disputed.style.display ='block';
                     document.getElementById('setMetaButton').disabled = false;
                     break;
                 case 2:
                     drafted.style.display = 'none';
                     payments.style.display = 'block';
                     meta.style.display = 'block';
-                    invalid.style.display ='block';
+                    disputed.style.display ='block';
                     document.getElementById('setMetaButton').disabled = false;
                     stage = "Published";
                     break;
@@ -52,10 +52,10 @@ function loadStageHTML() {
                     drafted.style.display = 'none';
                     payments.style.display = 'none';
                     meta.style.display = 'none';
-                    invalid.style.display ='block';
+                    disputed.style.display ='block';
                     document.getElementById('setMetaButton').disabled = true;
                     document.getElementById('reinstate').disabled = false;
-                    stage = "Invalid";
+                    stage = "Disputed";
                     break;
             }
         }
@@ -63,6 +63,12 @@ function loadStageHTML() {
     ).catch(function(e){
         console.log(e)
     })
+};
+
+function setEthereumAddress() {
+    var addr = document.getElementById("ethAddr").value;
+    console.log(addr); //remove after testing
+    account = addr;
 };
 
 function initRightsContract() {
@@ -87,7 +93,7 @@ function initRightsContract() {
             console.log(e);
     });
 });
-    factory.initiateContract(name, account, {from: account, gas: 1512100}).then(
+    factory.initiateContract(name, {from: account, gas: 3012100}).then(
 	       function(value) {
             console.log(value);
         }).catch(function(e) {
@@ -222,7 +228,7 @@ function sendEther() {
     var amount = web3.toWei(document.getElementById('paymentAmount').value, 'ether'); //Make sure this goes .toWei
     var sender = document.getElementById('paymentFrom').value;
     var purpose = document.getElementById('paymentPurpose').value;
-    currentRC.sendPayment(sender, purpose, {from: account, gas:300000, value: amount}).then(function(value) {
+    currentRC.sendPayment(sender, purpose, {from: account, gas:700000, value: amount}).then(function(value) {
         console.log(value);
         alert("Payment Sent");
     }).catch(function(e) {
@@ -233,12 +239,12 @@ function sendEther() {
 
 //TODO: list all payments! filter by purpose, or sender
 
-function makeInvalid() {
-    var r = confirm("Are you sure you want to claim this contract is invalid?");
+function makeDisputed() {
+    var r = confirm("Are you sure you want to claim this contract is Disputed?");
     if (r == false){
         return;
     }
-    currentRC.claimInvalid({from: account, gas: 120000}).then(function(value) {
+    currentRC.claimDisputed({from: account, gas: 120000}).then(function(value) {
         console.log(value);
         updateContractState();
     })
@@ -278,7 +284,7 @@ function updateContractState() {
                     stage = "Published";
                     break;
                 case 3:
-                    stage = "Invalid";
+                    stage = "Disputed";
                     break;
             }
             x += stage + "<br><br>";
@@ -300,8 +306,6 @@ function updateContractState() {
         if (num != 0) {
             c.innerHTML += "<b>Participants</b><br><br>";
             getAllPartyInfo();
-            c.innerHTML += "<br><br><b>Proposals and Votes</b><br>"
-            getProposalsAndVotes();
         }
     });
 
@@ -309,29 +313,17 @@ function updateContractState() {
         for (i = 0; i < num; i++) {
             Promise.all([
                 currentRC.getAddrs.call(i, {from: account}),
-                currentRC.getPartyName.call(i, {from: account}), currentRC.getPartyRole.call(i, {from: account}), currentRC.getPartySplit.call(i, {from: account}), currentRC.getPartyAccept.call(i, {from: account})]
+                currentRC.getPartyName.call(i, {from: account}), currentRC.getPartyRole.call(i, {from: account}), currentRC.getPartySplit.call(i, {from: account}), currentRC.getPartyAccept.call(i, {from: account}),
+                currentRC.getPartyVote.call(i, {from: account}),
+                currentRC.getPartyProposal.call(i, {from: account})]
             ).then(function(results){
-                    var info = "<b>Address: </b>" + "<div id=\"addr" + i +"\">" + results[0].valueOf() +"</div>" + "<br><b>Name: </b>" + results[1].valueOf() + "<br><b>Role: </b>" + results[2].valueOf() + "<br><b>Split: </b>" + results[3].toNumber() + "<br><b>Accepted Contract: </b>" + results[4].toString() + "<br><br>";
+                    var info = "<b>Address: </b>" + results[0].valueOf() + "<br><b>Name: </b>" + results[1].valueOf() + "<br><b>Role: </b>" + results[2].valueOf() + "<br><b>Split: </b>" + results[3].toNumber() + "<br><b>Accepts Contract: </b>" + results[4].toString() + "<br><b>Voted on: </b>" + results[5].valueOf();
+                    info += "<br><b>Proposed Hash: </b>" + results[6].valueOf() + "<br><br>";
                     c.innerHTML += info;
                 }).catch(function(err){console.log(err);});
         }
     }
-
-    function getProposalsAndVotes() {
-        for (i = 0; i < num; i++) {
-            var nextid = 'addr' + i.toString();
-            nextid = '\'' + nextid + '\'';
-            var x = document.getElementById(nextid).value;
-            Promise.all([
-                currentRC.getPartyVote.call(x, {from: account}),
-                currentRC.getProposal.call(x, {from: account})]
-            ).then(function(results) {
-                c.innerHTML += "<b>Vote: </b>" + results[0].valueOf() +"<br><b>Proposal: </b>" + results[1].valueOf() + "<br>"
-            });
-        }
-    };
 };
-
 
 
 window.onload = function() {
@@ -354,7 +346,7 @@ window.onload = function() {
   drafted = document.getElementById('MakeRemoveParty');
   payments = document.getElementById('Payments');
   meta = document.getElementById('MetaVotePropose');
-  invalid = document.getElementById('Invalid');
+  disputed = document.getElementById('Disputed');
 
-  drafted.style.display = payments.style.display = meta.style.display = invalid.style.display = 'none';
+  drafted.style.display = payments.style.display = meta.style.display = disputed.style.display = 'none';
   }

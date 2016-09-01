@@ -6,7 +6,7 @@ contract RightsContract {
         Drafted,
         Accepted,
         Published,
-        Invalid
+        Disputed
     }
     Stages public stage;
 
@@ -24,7 +24,7 @@ contract RightsContract {
     }
 
     modifier isValid {
-        if (stage != Stages.Invalid){
+        if (stage != Stages.Disputed){
             _
         }
     }
@@ -35,8 +35,8 @@ contract RightsContract {
         }
     }
 
-    modifier atInvalid{
-        if (stage == Stages.Invalid){
+    modifier atDisputed{
+        if (stage == Stages.Disputed){
             _
         }
     }
@@ -180,8 +180,10 @@ contract RightsContract {
         }
         numberAccepted++;
         uint s = numberPartyAddresses - numberAccepted;
+        Participants[msg.sender].accepts = true;
         if (s == 0) {
             stage = Stages.Accepted;
+            unlockPayments();
         }
     }
 
@@ -265,9 +267,8 @@ contract RightsContract {
         uint total = msg.value;
         for (uint i = 0; i < numberPartyAddresses; i++){
             address p = partyAddresses[i];
-            uint owed = total * (Participants[p].rightsSplit / 100);
+            uint owed = (total * Participants[p].rightsSplit) / 100;
             balance[p] += owed;
-            total += owed;
         }
         Payment(msg.sender, _from, _purpose);
     }
@@ -284,21 +285,27 @@ contract RightsContract {
         }
     }
 
-    //Stops advancement of contract. Indicates some real world communication will be needed.
-    function claimInvalid() hasPermission{
-        stage = Stages.Invalid;
+    //Marks time when contract was last claimed to be Disputed: (unix time)
+    uint DisputedAtTime;
+    //Stops payments in the contract. Also prevents new metahash from being published
+    function claimDisputed() hasPermission {
+        if (now < DisputedAtTime + 7 days || stage == Stages.Disputed || stage == Stages.Drafted){
+            throw;
+        }
+        stage = Stages.Disputed;
         paymentsUnlocked = false;
         numberAccepted = 0;
+        DisputedAtTime = now;
     }
 
     //If everyone "accepts" contract again, contract moves to drafted state again.
-    function reinstateContract() hasPermission atInvalid {
-        if (!checkSplit() || Participants[msg.sender].accepts){
+    function reinstateContract() hasPermission atDisputed {
+        if (Participants[msg.sender].accepts){
             throw;
         }
         numberAccepted++;
-        uint s = numberPartyAddresses - numberAccepted;
-        if (s == 0) {
+        uint half = numberPartyAddresses / 2;
+        if (numberAccepted > half) {
             stage = Stages.Drafted;
             numberAccepted = 0;
             resetAccepts();

@@ -14,6 +14,11 @@
   <h3 id="RightsContractName">Your Contract Name</h3>
   <br>
 
+  <h1>Choose Ethereum Address (defaults to eth.accounts[0])</h1><br>
+  <label>Address:</label><input type="text" id="ethAddr"</input>
+  <br><button onclick="setEthereumAddress()">Set Address</button>
+  <br><br><br><br>
+
   <button onclick="toggleDisplay('CreateGetContract')">Toggle Get/Create</button><br><br>
   <div id="CreateGetContract">
   <h1>Create Contract</h1>
@@ -59,7 +64,7 @@
   <h1>Add or Vote on Metadata Proposal</h1>
   <br><label for="NewProp">New Proposal:</label><input type="text" id="newProposal" placeholder="e.g. QmS5Z9A9ztVi2fVyMfVQyipxQC8ApKUdU1EXFuRrLj5cNW"></input>
   <br><br>
-  <button onclick="createMetaProposal()">Create Proposal</button>
+  <buttonPP onclick="createMetaProposal()">Create Proposal</button>
   <br><br>
   <label for="NewVote">Vote: </label><input type="text" id="voteAddr" placeholder="e.g. 0x1234"></input>
   <br><br>
@@ -77,8 +82,8 @@
   <button onclick="getUserBalance()">Get Balance</button>
   <br><br>
   <button onclick="withdraw()">Withdraw Balance</button>
-  <br><br>
-  <h1>Send Payment</h1>
+  <br><br><br>PP
+  <br><br><h1>Send Payment</h1>
   <br><label>From: </label><input type="text" id="paymentFrom" placeholder="e.g. Spotify"></input><br>
   <label>Purpose: </label><input type="text" id="paymentPurpose" placeholder="e.g. 'March 2016 payment'"></input><br>
   <label>Amount (in ether): </label><input type="text" id="paymentAmount" ></input><br><br>
@@ -87,11 +92,11 @@
 
   <br><br><br>
 
-  <div id='Invalid'>
-  <h1>Dispute Contract or Validate it</h1>
-  <br><p>If you have an issue with your contract, you can prevent further action, and disable payments by making it invalid.</p><br>
-  <button onclick=makeInvalid()>Invalidate</button><br><br>
-  <p>If your contract is in an invalid state, but you now accept its terms, you can vote to move the contract state forward here: </p>
+  <div id='Disputed'>
+  <h1>Dispute Contract or Reinstate it</h1>
+  <br><p>If you have an issue with your contract, you can prevent further action, and disable payments by making it Disputed.</p><br>
+  <button onclick=makeDisputed()>Disputed</button><br><br>
+  <p>If your contract is in a Disputed state, but you now accept its terms, you can vote to move the contract state forward here: </p>
   <br>
   <button onclick=voteReinstate() id="reinstate" disabled=true>Reinstate</button>
   </div>
