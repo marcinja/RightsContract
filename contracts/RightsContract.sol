@@ -1,6 +1,6 @@
 
 contract RightsContract {
-    //TODO: Review voting procedure from Drafted -> Accepted,
+   //TODO: Review voting procedure from Drafted -> Accepted,
 
     enum Stages {
         Drafted,
